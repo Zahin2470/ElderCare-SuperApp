@@ -155,12 +155,6 @@ Open `http://localhost:3000` for the frontend app (dashboard) and `http://localh
 
 ---
 
-## 📥 Download-ready assets in this workspace
-- Logo preview: `/mnt/data/A_digital_illustration_logo_for_ElderCare_is_pre.png`  
-- UI preview: `/mnt/data/A_collection_of_digital_user_interface_(UI)_design.png`
-
----
-
 ## ❤️ Thanks
 Thanks for building a compassionate product for older adults — if you want, I can also:
 - produce a GitHub README with **animated badges**, **social links**, and a **demo GIF**, or
