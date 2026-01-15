@@ -114,7 +114,7 @@ POST /api/admin/audit { actor, action, subject, metadata }
 
 ---
 
-## 🧪 Local dev — Quickstart (example)
+## 🧪 Local dev — Quickstart (Will be implement Later)
 ```bash
 # clone
 git clone <repo-url> eldercare && cd eldercare
