@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './components/auth/AuthContext';
+<<<<<<< HEAD
 import { AdminAuthProvider } from './components/admin/AdminAuthContext';
 import { NavigationProvider, useNavigation } from './components/navigation/NavigationContext';
 import AuthFlow from './components/auth/AuthFlow';
 import { AdminPortal } from './components/admin/AdminPortal';
+=======
+import { NavigationProvider, useNavigation } from './components/navigation/NavigationContext';
+import AuthFlow from './components/auth/AuthFlow';
+>>>>>>> 290d5e6310cae3047943e963a8bdc3e36edcb21e
 import Dashboard from './components/Dashboard';
 import ElderLink from './components/ElderLink';
 import SilverBox from './components/SilverBox';
@@ -14,7 +19,11 @@ import NutriSenior from './components/NutriSenior';
 import TeleHealth from './components/TeleHealth';
 import CommunityActivities from './components/CommunityActivities';
 import RewardsLoyalty from './components/RewardsLoyalty';
+<<<<<<< HEAD
 // import BrandShowcase from './components/brand/BrandShowcase';
+=======
+import BrandShowcase from './components/brand/BrandShowcase';
+>>>>>>> 290d5e6310cae3047943e963a8bdc3e36edcb21e
 // import InteractionMap from './components/navigation/InteractionMap';
 // ElderLink Frames
 import {
@@ -56,7 +65,11 @@ import {
   AW04_ApplyNow,
   AW05_ModifyApplication,
 } from './components/frames/AgeWellFrames';
+<<<<<<< HEAD
 import { Home, Users, Pill, Building2, Heart, Briefcase, Utensils, Video, Calendar, Gift, Menu, LogOut, Map, Palette, ShieldCheck } from 'lucide-react';
+=======
+import { Home, Users, Pill, Building2, Heart, Briefcase, Utensils, Video, Calendar, Gift, Menu, LogOut, Map, Palette } from 'lucide-react';
+>>>>>>> 290d5e6310cae3047943e963a8bdc3e36edcb21e
 import { Button } from './components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { Toaster } from './components/ui/sonner';
@@ -66,12 +79,15 @@ function MainApp() {
   const { user, logout } = useAuth();
   const { currentNavigation, navigateToFrame } = useNavigation();
   const [userRole, setUserRole] = useState<'senior' | 'family'>('senior');
+<<<<<<< HEAD
   const [showAdminPortal, setShowAdminPortal] = useState(false);
 
   // Show admin portal if requested
   if (showAdminPortal) {
     return <AdminPortal />;
   }
+=======
+>>>>>>> 290d5e6310cae3047943e963a8bdc3e36edcb21e
 
   const modules = [
     { id: 'dashboard', name: 'Dashboard', icon: Home, emoji: '🏠' },
@@ -85,7 +101,11 @@ function MainApp() {
     { id: 'telehealth', name: 'TeleHealth', icon: Video, emoji: '📺' },
     { id: 'communityactivities', name: 'Community Activities', icon: Calendar, emoji: '📅' },
     { id: 'rewardsloyalty', name: 'Rewards & Loyalty', icon: Gift, emoji: '🎁' },
+<<<<<<< HEAD
     // { id: 'brandshowcase', name: 'Brand System', icon: Palette, emoji: '🎨' },
+=======
+    { id: 'brandshowcase', name: 'Brand System', icon: Palette, emoji: '🎨' },
+>>>>>>> 290d5e6310cae3047943e963a8bdc3e36edcb21e
   ];
 
   // Render frame based on navigation state
@@ -277,6 +297,7 @@ function MainApp() {
         <Button
           variant="outline"
           size="sm"
+<<<<<<< HEAD
           onClick={() => setShowAdminPortal(true)}
           className="w-full text-[#4A90E2] hover:text-[#3569B0] hover:bg-blue-50"
         >
@@ -286,6 +307,8 @@ function MainApp() {
         <Button
           variant="outline"
           size="sm"
+=======
+>>>>>>> 290d5e6310cae3047943e963a8bdc3e36edcb21e
           onClick={logout}
           className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
         >
@@ -342,12 +365,19 @@ function MainApp() {
 export default function App() {
   return (
     <AuthProvider>
+<<<<<<< HEAD
       <AdminAuthProvider>
         <NavigationProvider>
           <AppContent />
           <Toaster />
         </NavigationProvider>
       </AdminAuthProvider>
+=======
+      <NavigationProvider>
+        <AppContent />
+        <Toaster />
+      </NavigationProvider>
+>>>>>>> 290d5e6310cae3047943e963a8bdc3e36edcb21e
     </AuthProvider>
   );
 }
