@@ -1,11 +1,12 @@
-# 🧡 ElderCare — SuperApp Project Full Attractive Forntend
+# 👵🩺👴 ElderCare — SuperApp 
+### Project Full Attractive Forntend
 **Care · Connect · Comfort**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
-[![Coverage](https://img.shields.io/badge/coverage-—%75-lightgrey)](#)
-[![Contribute](https://img.shields.io/badge/contribute-welcome-orange.svg)](#contributing)
-[![Issues](https://img.shields.io/github/issues/your-repo/eldercare)](#)
+[![Coverage](https://codecov.io/gh/Zahin2470/ElderCare-SuperApp/branch/main/graph/badge.svg)](https://codecov.io/gh/Zahin2470/ElderCare-SuperApp)
+[![Contribute](https://img.shields.io/badge/contribute-welcome-orange.svg)](CONTRIBUTING.md)
+[![Issues](https://img.shields.io/github/issues/Zahin2470/ElderCare-SuperApp.svg)](https://github.com/Zahin2470/ElderCare-SuperApp/issues)
 
 ---
 
