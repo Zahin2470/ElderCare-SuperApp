@@ -1,169 +1,189 @@
-# 👵🩺👴 ElderCare — SuperApp 
-### Project Full Attractive Forntend
-**Care · Connect · Comfort**
+# 👵🩺👴 ElderCare — SuperApp
+**Care · Connect · Comfort** — a unified platform for Bangladesh's elderly-care crisis.
 
+[![CI](https://github.com/Zahin2470/ElderCare-SuperApp/actions/workflows/ci.yml/badge.svg)](https://github.com/Zahin2470/ElderCare-SuperApp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)](#)
-[![Coverage](https://codecov.io/gh/Zahin2470/ElderCare-SuperApp/branch/main/graph/badge.svg)](https://codecov.io/gh/Zahin2470/ElderCare-SuperApp)
-[![Contribute](https://img.shields.io/badge/contribute-welcome-orange.svg)](CONTRIBUTING.md)
-[![Issues](https://img.shields.io/github/issues/Zahin2470/ElderCare-SuperApp.svg)](https://github.com/Zahin2470/ElderCare-SuperApp/issues)
+
+<p align="center"><img src="./frontend/src/assets/logo.webp" alt="ElderCare Logo" width="420" /></p>
+
+ElderCare brings caregiving, medication management, health records, telehealth, nutrition, co-living, mentoring and community into one app for seniors **and** their families.
+
+- **Prototype:** https://motto-truck-48556756.figma.site
+- **Demo video:** https://drive.google.com/file/d/1s6sIHRpsfK-G8IA0RTt6YToHT3oIBvgO/view?usp=sharing
 
 ---
 
-<p align="center">
-  <img src="./src/assets/0c1e8e2e7820887c925ea1ad4cc85865d08403d1.png" alt="ElderCare Logo" width="620" />
-</p>
+## Architecture
 
+```
+┌────────────────────┐   /api (same origin)   ┌──────────────────────┐      ┌──────────────┐
+│ frontend/          │ ─────────────────────▶ │ backend/             │ ───▶ │ PostgreSQL   │
+│ React 18 + Vite    │   Bearer access token  │ Express 5 + TS + zod │      │ 16           │
+│ Tailwind v4        │   + httpOnly refresh   │ JWT · Argon2 · TOTP  │      └──────────────┘
+│ TanStack Query     │        cookie          │                      │ ───▶ Anthropic API (server-side only)
+└────────────────────┘                        └──────────────────────┘      (optional; rule-based fallback)
+```
 
-**ElderCare** is a professional, full-stack eldercare superapp that integrates caregiving, medication management, co‑living, unified health records, mentoring, nutrition, telehealth, community activities and a rewards system into a single, seamless ecosystem for seniors, families, caregivers, mentors and admins.
-
----
-
-## 🚀 Quick links
-- **Figma brand & UI frames**: `Logo/Icon`, `GC_Main`, `D01_ActivityLog`, `A02_Admin_Dashboard` (use the Figma command list supplied in the design doc)
-- **Key pages**: Dashboard, GoldenCare (mentors), NutriSenior (meals), SilverBox (meds), Care360 (EHR), TeleHealth, AgeWell Living, Activity Log, Admin Console
-- **Local assets**: see `/mnt/data` for supplied logo & UI preview PNGs in this workspace
-
----
-
-## ✨ Highlights & Design Goals
-- One single app for seniors + their families: reduced fragmentation, better outcomes.
-- Deep integration between modules: e.g., missed medication → caregiver alert → activity log → Care360 entry.
-- Strong admin & audit model: role-based permissions, audit logging, impersonation for troubleshooting (fully auditable).
-- Senior-first UX: large tap targets, accessible typography, high-contrast colors, simple language.
-- Figma-first design system: tokens, component library, and exact frame names for developer handoff.
-
----
-
-## 📦 Modules & Features (At-a-glance)
-| Module | Core feature set |
+| Folder | What it is |
 |---|---|
-| ElderLink | Find & book caregivers, chat, booking history, background checks |
-| SilverBox | Medication reminders, IoT adherence logs, device telemetry |
-| AgeWell Living | Co-living management, room booking, community events |
-| Care360 | Unified EHR for seniors — records, uploads, sharing with consent |
-| GoldenCare Jobs | Mentor marketplace: search, book, message, mentor onboarding |
-| NutriSenior | Custom meal plans, dietitian consults, delivery + tracking |
-| TeleHealth | Video & chat consults with doctors (WebRTC) |
-| Community & Activities | Events, RSVP, groups, virtual classes |
-| Rewards & Loyalty | Points, referrals, redeem for services/discounts |
-| Admin Console | User & partner management, audit logs, security center |
+| `frontend/` | The React app (all 10 modules, auth flow, admin console). |
+| `backend/` | REST API, SQL migrations, seed data, AI services, tests. |
+| `docker-compose.yml` | Postgres + backend + nginx-served frontend. |
+| `design-assets/` | Original full-resolution logo (the app ships a 23 KB WebP). |
 
 ---
 
-## 🎨 Brand & Assets
-Design tokens:
-- **Primary**: `#4A90E2` | **Accent**: `#FFA726` | **Dark**: `#1F2D3D`
-- Typography: *Poppins* (brand) + *Inter* (UI)
+## Quick start
 
-Included assets in this workspace:
-- `/mnt/data/A_digital_illustration_logo_for_ElderCare_is_pre.png` — high-fidelity logo preview (use in marketing / splash)
-- `/mnt/data/A_collection_of_digital_user_interface_(UI)_design.png` — UI preview + components layout
+**Prerequisites:** Node 20+ and PostgreSQL 14+ (or Docker).
 
-> To import into Figma: File → Place image, or paste the SVGs provided earlier into a frame and convert to components.
-
----
-
-## 🛠 Tech Stack (recommended)
-- **Frontend**: React + TypeScript, Tailwind (utility-first CSS), React Router
-- **Backend**: Node.js (NestJS) or Django REST Framework
-- **DB**: PostgreSQL (+ TimescaleDB for device telemetry optional)
-- **Realtime**: WebSockets + WebRTC for video
-- **Storage**: S3-compatible object store
-- **Auth**: JWT + refresh tokens, Argon2 password hashing, OTP for BD phone
-- **CI/CD**: GitHub Actions → Docker → Kubernetes (GCP/AWS)
-
----
-
-## 📡 Example routes & API (short)
-**Frontend routes**:
-```
-/                 → Dashboard
-/activity-log     → Activity Log
-/goldencare       → GoldenCare (mentors)
-/goldencare/mentors/:id
-/nutrisenior/menu
-/silverbox/meds
-/care360/records
-/admin             → Admin Console (desktop)
-```
-**Important API examples**:
-```
-GET /api/activity-log?userId=&from=&to=&module=&severity=&q=
-POST /api/bookings { user_id, mentor_id, slot_iso, mode }
-POST /api/auth/request-otp { phone }
-POST /api/records { file, meta }
-POST /api/admin/audit { actor, action, subject, metadata }
-```
-
----
-
-## 🔐 Auth & Security (short)
-- Phone normalization for Bangladesh: `^(?:\+8801|01)[0-9]{9}$` → store as E.164 `+8801...`
-- Passwords: Argon2 recommended
-- OTP: 6-digit, expire 5 minutes, max 3 attempts
-- Admin-sensitive actions require 2FA / re-auth
-- Full audit logging to `/api/admin/audit` with actor/action/subject/metadata
-
----
-
-## 🧭 Figma / Handoff notes (copy-paste ready)
-- Use **exact frame names** for mapping prototype → app:
-  - `D01_ActivityLog`, `GC_Main`, `GC_MentorProfile`, `EL01_SearchResults`, `NS01_MenuOverview`, `SB01_MedsOverview`, `C360_RecordsList`, `A02_Admin_Dashboard`
-- Add `data-figma-target` attributes on interactive CTAs during dev prototype build to connect to frames
-- Export icons as SVG, images as PNG 2x for retina
-
----
-
-## 🧪 Local dev — Quickstart (Will be implement Later)
 ```bash
-# clone
-git clone <repo-url> eldercare && cd eldercare
+# 1. database (skip if you already have Postgres)
+docker run -d --name eldercare-db -p 5432:5432 \
+  -e POSTGRES_USER=eldercare -e POSTGRES_PASSWORD=eldercare_dev -e POSTGRES_DB=eldercare postgres:16-alpine
 
-# frontend
-cd frontend
-pnpm install
-pnpm dev
-
-# backend (new terminal)
+# 2. backend  → http://localhost:4000
 cd backend
-pnpm install
-pnpm dev
+cp .env.example .env              # defaults work for local dev
+npm ci
+npm run migrate && npm run seed   # schema + demo data (dev only)
+npm run dev
+
+# 3. frontend (new terminal)  → http://localhost:3000
+cd frontend
+npm ci
+npm run dev                   # Vite proxies /api to :4000, so no CORS setup is needed
 ```
 
-Open `http://localhost:3000` for the frontend app (dashboard) and `http://localhost:3000/activity-log` to test the Activity Log.
+Or everything in containers: `docker compose up --build` → http://localhost:3000
+(then `docker compose run --rm backend node dist/seed.js` for demo data).
+
+### Demo accounts (created by `npm run seed`, development only)
+
+| Role | Sign in with | Password |
+|---|---|---|
+| Senior | `demo@eldercare.com` or `+8801712345678` | `Demo@12345` |
+| Family (linked to the senior) | `family@eldercare.com` | `Demo@12345` |
+| Admin (Super / Security / Operations / Clinical) | Sign-in screen → **Staff sign-in**: `super@eldercare.com`, `security@…`, `ops@…`, `clinical@…` | `Admin@12345` + 2FA |
+
+Admin 2FA (TOTP): run `npm run totp -- super@eldercare.com` in `backend/` to print the current 6-digit code (dev only), or add the printed `otpauth://` URI to an authenticator app.
+In development the OTP is shown on the verification screen ("Dev mode — your code is …") because no SMS gateway is configured.
 
 ---
 
-## ✅ Contribution & PR guideline (short)
-- Branch: `feat/<module>-short`, `fix/<issue>-short`
-- Tests required for backend changes and major frontend flows
-- PR template: description, screenshots, affected frames (Figma), migration notes
-- Code style: Prettier + ESLint (TS rules), commitlint (conventional commits)
+## Modules — what is real
+
+All ten modules read and write the database. Everything below is covered by API tests.
+
+| Module | Working features |
+|---|---|
+| **Dashboard** | Live vitals with status/trend, alerts (missed doses, low stock, out-of-range readings), upcoming items, points, daily check-in that earns points, AI daily summary, family-link requests. |
+| **SilverBox** | Per-person medication schedule, idempotent "mark taken / skip", computed adherence (week / month / on-time), full history *including missed doses*, stock tracking and refill alerts. |
+| **ElderLink** | Caregiver search/filter, booking with **server-side pricing** and double-booking prevention, cancel, AI suggestions. |
+| **Care360** | Vitals log, record upload (PDF/JPG/PNG, magic-byte checked, 10 MB), owner-only download, time-limited share with a doctor, prescription refill requests. |
+| **TeleHealth** | Doctor search, real slot availability, booking (a slot can only be booked once), cancel. Video join link is issued only when a video host is configured — see limitations. |
+| **NutriSenior** | Menu, meal plans, cart → order priced by the server, live order tracking, ratings, daily calorie summary, AI suggestions. |
+| **GoldenCare** | Mentor search, session booking, reschedule, cancel (the old page-reload navigation hack is gone). |
+| **AgeWell Living** | Room applications (modify / withdraw), shared-space booking with overlap protection, community chat. |
+| **Community** | Events with capacity-safe RSVP, "my events", persisted group chat, AI suggestions. |
+| **Rewards** | Append-only points ledger, once-per-day earn rules enforced by the database, concurrency-safe redemption with voucher codes, tiers from lifetime points. |
+| **Admin console** | Real: dashboard figures, user list/search/suspend with mandatory reason, audit log, roles matrix. *Sample data (clearly labelled in the UI):* Security Center, Module Management, System Settings. |
 
 ---
 
-## 📅 Roadmap (TL;DR)
-**MVP (0–3 months)**: Dashboard, ElderLink, Care360, Auth (email + BD phone OTP), SilverBox pilot, NutriSenior pilot.  
-**Phase II (3–9 months)**: GoldenCare Jobs, TeleHealth, Activity Log, Admin console.  
-**Phase III (9–18 months)**: AgeWell Living franchises, insurer partnerships, internationalization.
+## AI features (Claude)
+
+The API key lives **only on the server**. With no `ANTHROPIC_API_KEY` every feature still works using rule-based fallbacks ("basic mode"), so the app never depends on the model being up.
+
+| Feature | How it works |
+|---|---|
+| **Care Assistant** (chat, English / বাংলা) | Answers from the person's own context (today's doses, latest readings, upcoming items). Persisted conversations, per-user daily cap. |
+| **Daily summary / weekly family summary** (dynamic content) | Claude writes short, kind text from structured facts. Cached per user/day/language. |
+| **Smart recommendations** (meals, events, caregivers) | Ranked by a transparent scoring function (needs derived from medications and vitals, past ratings, RSVP history, availability); each item carries the reason it was chosen. Claude only *phrases* the reason — it cannot add, remove or reorder items. |
+
+**Safety design** (all covered by tests in `backend/tests/ai.test.ts`):
+
+1. **Emergency screening runs first, in code.** Chest pain, breathing trouble, stroke signs, fainting, overdose, self-harm (English and Bangla) get a fixed instruction to call **999** and alert family — the model is never consulted. The UI adds a one-tap call button.
+2. **No personal identifiers leave the server.** Context is an allow-list of fields; name, phone, email, address and ids are never sent. Free text (e.g. a medicine name) is stripped of markup and length-capped, and the prompt marks the block as data, not instructions.
+3. **No diagnosing, no dose changes** — enforced in the system prompt, and the summary generator rejects any text containing numbers that were not in the supplied facts (hallucination guard).
+4. **Output is rendered as plain text**, never HTML.
+5. Model errors, timeouts and empty replies fall back to rule-based answers; failures are logged without prompts or health data.
+
+Configure with `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` (default `claude-sonnet-5`). *Note: the live-model path is exercised in tests with an injected fake model; it has not been run against the real API in this repository's CI.*
 
 ---
 
-## 🧾 License & Contact
-**License:** MIT — add a LICENSE file in repo root.  
-**Author / Owner:** Abrar Hossain Zahin — include your preferred contact email in `package.json` and repo settings.
+## Security model
+
+- **Passwords:** Argon2id. Server-enforced policy. Unknown-user and wrong-password paths take the same time and return the same error. 5 failures → 15-minute lockout.
+- **Sessions:** 15-minute JWT access token held **in memory only** (never localStorage); 30-day rotating refresh token in an `httpOnly`, `SameSite=Lax`, `Secure` (prod) cookie, stored hashed. Replaying a rotated token revokes the whole login session. Logout, password reset and suspension revoke tokens immediately.
+- **OTP:** 6 digits, HMAC-hashed at rest, 5-minute expiry, 3 attempts then burned, 60 s resend cooldown, 5/hour cap. Responses never reveal whether an account exists. Codes are echoed to the client **only outside production**.
+- **Authorization:** one choke-point (`resolveSubject`) decides whose data a request touches: seniors → themselves (client-supplied ids are ignored), family → only accepted links (senior must consent). Admin accounts cannot read member health data through the member API.
+- **Admin:** password **and** TOTP (RFC 6238, replay-protected) — the password alone yields no session. Permissions enforced server-side per request; roles/status changes require a reason and are audited; admins cannot suspend themselves or mint admins over the API.
+- **Audit log:** append-only (database trigger blocks UPDATE/DELETE). Records logins, admin actions, record downloads and shares.
+- **Data integrity:** money is computed on the server; double-booking, over-capacity RSVPs, double redemption and duplicate doses are prevented by unique indexes and row locks and tested under concurrency.
+- **Uploads:** generated filenames, size and type limits, real file-signature check, `nosniff`, owner-only access.
+- **Ops:** helmet headers, CORS allow-list, rate limits, request logging without bodies/queries, uniform JSON errors with no stack traces, the server **refuses to start in production with the built-in dev secrets**.
 
 ---
 
-## ❤️ Thanks
-Thanks for building a compassionate product for older adults — if you want, I can also:
-- produce a GitHub README with **animated badges**, **social links**, and a **demo GIF**, or
-- generate a one-page **landing page HTML** with this branding and exported images.
+## API overview
+
+`/api/auth` · `/api/admin` · `/api/family` · `/api/dashboard` · `/api/medications` · `/api/care360` · `/api/telehealth` · `/api/caregivers` · `/api/nutrition` · `/api/community` · `/api/agewell` · `/api/mentors` · `/api/rewards` · `/api/ai` · `/api/healthz`
+
+Errors are always `{ "error": { "code", "message", "details?" } }`. Phone numbers are normalised to E.164 (`+8801XXXXXXXXX`; operator prefixes 013–019).
+
+Front-end routes are real URLs (`/silverbox`, `/care360/C360_ViewRecord`), so refresh, back button and bookmarks work.
 
 ---
 
-# ElderCare-SuperApp
-A Unified Platform for Bangladesh's Elderly Crisis (Prototype)
-## Figma Prototype Link: https://motto-truck-48556756.figma.site
-### Demo Video Link: https://drive.google.com/file/d/1s6sIHRpsfK-G8IA0RTt6YToHT3oIBvgO/view?usp=sharing
+## Testing
+
+```bash
+cd backend  && npm test     # 174 tests against a REAL PostgreSQL (TEST_DATABASE_URL, name must contain "test")
+cd frontend && npm test     # component + API-client tests
+npm run typecheck           # from the repo root: both projects
+```
+
+The suite includes concurrency tests (parallel redemptions / RSVPs / bookings), authorization-isolation tests, the AI safety/privacy tests above, and a **frontend↔backend route-contract test** that fails if the React app calls an endpoint the API doesn't have. Several of these were mutation-checked (removing a row lock makes them fail).
+
+CI: `.github/workflows/ci.yml` (Postgres service; typecheck + tests + build for both projects).
+
+---
+
+## Going to production — checklist
+
+1. Set `NODE_ENV=production` and unique `JWT_ACCESS_SECRET` / `OTP_HMAC_SECRET` (the server will not start otherwise). Serve over HTTPS and set `TRUST_PROXY=1` behind your proxy.
+2. **Implement an SMS/email gateway** in `backend/src/lib/notify.ts` (only a console notifier exists). Without it nobody can verify an account in production.
+3. Move `STORAGE_DIR` to durable object storage (S3-compatible) — the local-disk driver is for a single server.
+4. Run migrations as a deploy step (`AUTO_MIGRATE=false`) and back up Postgres. **Do not run `seed` in production** (it refuses).
+5. Enrol real admins with `npm run totp` and remove the seeded demo accounts.
+6. Health data is sensitive personal data: complete a privacy/legal review (consent text, retention, breach process) before real users. A third-party AI provider receives only the minimised context described above.
+7. Set `VIDEO_BASE_URL` to a self-hosted Jitsi (or integrate your provider) to enable TeleHealth video.
+
+---
+
+## Known limitations (not built yet)
+
+Being explicit so nothing is mistaken for working:
+
+- **Not implemented:** Activity Log module (`D01_ActivityLog`), caregiver/dietitian chat, IoT/dispenser telemetry, WebSocket realtime (group chat polls every 5 s), background-check workflow, caregiver/partner-side apps, payment processing, admin Security Center / Module Management / System Settings back-ends, multi-senior switching for a family account with several linked seniors (the first linked senior is used), operational tools to advance meal-order/booking status.
+- **TeleHealth video** needs a video host (`VIDEO_BASE_URL`); the previous simulated call screen was removed rather than left pretending to work.
+- **Untested here:** Docker images/compose (no Docker in the build sandbox), the live Anthropic API call, and visual/browser rendering (no browser available) — the frontend is verified by type-check, unit/component tests, production build and the route-contract test, not by visual QA. Please click through it once before release.
+- AI recommendation weights and the vitals bands are reasonable defaults, **not clinically validated**; have a clinician review them.
+
+---
+
+## Brand & design
+
+Tokens: **Primary** `#4A90E2` · **Accent** `#FFA726` · **Dark** `#1F2D3D`. Typography: Poppins (headings) + Inter (UI). Tokens live in `frontend/src/styles/globals.css`; Tailwind v4 compiles them at build time (the old committed, conflict-ridden `index.css` build artifact is gone).
+
+Figma frame names used for hand-off are preserved as route/frame ids (`EL01_SearchResults`, `SB01_MedsOverview`, `C360_RecordsList`, `NS01_MenuOverview`, …). Design-review tools (Brand Showcase, Interaction Map) appear in the sidebar in development builds only.
+
+## Contributing
+
+Branches `feat/<module>-short` / `fix/<issue>-short`; tests required for backend changes and major flows; conventional commits. Please run `npm run typecheck && npm test` before opening a PR.
+
+## License & contact
+
+MIT — see [LICENSE](LICENSE). Owner: Abrar Hossain Zahin.

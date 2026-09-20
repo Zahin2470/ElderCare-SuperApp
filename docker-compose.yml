@@ -1,0 +1,40 @@
+# Full stack:  docker compose up --build     → app on http://localhost:3000
+# First run with demo data:  docker compose run --rm backend node dist/seed.js   (dev only — see README)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: eldercare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eldercare_dev}
+      POSTGRES_DB: eldercare
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eldercare"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 4000
+      DATABASE_URL: postgres://eldercare:${POSTGRES_PASSWORD:-eldercare_dev}@db:5432/eldercare
+      CORS_ORIGINS: http://localhost:3000
+      TRUST_PROXY: 1
+      # Required when NODE_ENV=production (the server refuses the built-in dev defaults):
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-only-access-secret-change-me-0123456789abcdef}
+      OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:-dev-only-otp-secret-change-me-0123456789abcdef}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+    volumes: [uploads:/app/storage]
+
+  frontend:
+    build: ./frontend
+    depends_on: [backend]
+    ports: ["3000:80"]
+
+volumes:
+  pgdata:
+  uploads:

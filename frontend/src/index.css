@@ -1,0 +1,9 @@
+/*
+ * Tailwind v4 entry point.
+ *
+ * This file used to be a committed *compiled* Tailwind build (137 KB, with 100+
+ * unresolved git conflict markers). It is now generated at build time by the
+ * @tailwindcss/vite plugin; the design tokens live in styles/globals.css.
+ */
+@import "tailwindcss";
+@import "./styles/globals.css";
