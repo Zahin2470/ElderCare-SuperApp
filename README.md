@@ -1,8 +1,12 @@
-# 👵🩺👴 ElderCare — SuperApp
-**Care · Connect · Comfort** — a unified platform for Bangladesh's elderly-care crisis.
+<div align="center">
 
-[![CI](https://github.com/Zahin2470/ElderCare-SuperApp/actions/workflows/ci.yml/badge.svg)](https://github.com/Zahin2470/ElderCare-SuperApp/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+# 👵🩺👴 ElderCare — SuperApp
+
+### **Care · Connect · Comfort**
+
+**A unified platform addressing Bangladesh's elderly-care crisis.**
+
+</div>
 
 <p align="center"><img src="./frontend/src/assets/logo.webp" alt="ElderCare Logo" width="420" /></p>
 
