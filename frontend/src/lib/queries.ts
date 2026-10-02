@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSeniorScope } from '../components/auth/AuthContext';
 import { get, post } from './api';
 
 // ───────── DTOs (mirror the backend responses) ─────────
@@ -11,29 +12,53 @@ export interface DigestContent { headline: string; summary: string; highlights: 
 export interface Digest { kind: 'daily' | 'family_weekly'; locale: 'en' | 'bn'; source: string; cached: boolean; content: DigestContent; facts: { dosesToday: number; dosesTaken: number; dosesMissed: number; adherenceThisWeek: number | null; missedThisWeek: number } }
 export interface Recommendation { id: string; type: 'meal' | 'plan' | 'event' | 'caregiver'; title: string; subtitle: string; score: number; reason: string }
 
+// Every key below ends with `seniorId` (undefined for a senior's own account) so that switching
+// which linked senior a family member is viewing automatically refetches — and so invalidating a
+// prefix like ['meds'] still matches every senior's variant of that query.
 export const keys = {
-  dashboard: ['dashboard'] as const, dosesToday: ['meds', 'today'] as const, meds: ['meds', 'list'] as const, adherence: ['meds', 'adherence'] as const,
-  digest: (kind: string, locale: string) => ['ai', 'digest', kind, locale] as const,
-  recs: (type: string, locale: string) => ['ai', 'recs', type, locale] as const,
+  dashboard: (seniorId?: string) => ['dashboard', seniorId] as const,
+  dosesToday: (seniorId?: string) => ['meds', 'today', seniorId] as const,
+  meds: (seniorId?: string) => ['meds', 'list', seniorId] as const,
+  adherence: (seniorId?: string) => ['meds', 'adherence', seniorId] as const,
+  digest: (kind: string, locale: string, seniorId?: string) => ['ai', 'digest', kind, locale, seniorId] as const,
+  recs: (type: string, locale: string, seniorId?: string) => ['ai', 'recs', type, locale, seniorId] as const,
 };
 
-export const useDashboard = () => useQuery({ queryKey: keys.dashboard, queryFn: () => get<DashboardData>('/dashboard') });
-export const useDosesToday = () => useQuery({ queryKey: keys.dosesToday, queryFn: () => get<{ doses: Dose[] }>('/medications/today').then((r) => r.doses), refetchInterval: 60_000 });
-export const useMedications = () => useQuery({ queryKey: keys.meds, queryFn: () => get<{ medications: Medication[] }>('/medications').then((r) => r.medications) });
-export const useAdherence = () => useQuery({ queryKey: keys.adherence, queryFn: () => get<Adherence>('/medications/adherence') });
-export const useDigest = (kind: 'daily' | 'family_weekly', locale: 'en' | 'bn') =>
-  useQuery({ queryKey: keys.digest(kind, locale), queryFn: () => get<Digest>('/ai/digest', { kind, locale }), staleTime: 10 * 60_000 });
-export const useRecommendations = (type: 'meals' | 'events' | 'caregivers', locale: 'en' | 'bn') =>
-  useQuery({ queryKey: keys.recs(type, locale), queryFn: () => get<{ items: Recommendation[]; phrasedBy: 'ai' | 'template' }>('/ai/recommendations', { type, locale }), staleTime: 5 * 60_000 });
+export const useDashboard = () => {
+  const scope = useSeniorScope();
+  return useQuery({ queryKey: keys.dashboard(scope.seniorId), queryFn: () => get<DashboardData>('/dashboard', scope) });
+};
+export const useDosesToday = () => {
+  const scope = useSeniorScope();
+  return useQuery({ queryKey: keys.dosesToday(scope.seniorId), queryFn: () => get<{ doses: Dose[] }>('/medications/today', scope).then((r) => r.doses), refetchInterval: 60_000 });
+};
+export const useMedications = () => {
+  const scope = useSeniorScope();
+  return useQuery({ queryKey: keys.meds(scope.seniorId), queryFn: () => get<{ medications: Medication[] }>('/medications', scope).then((r) => r.medications) });
+};
+export const useAdherence = () => {
+  const scope = useSeniorScope();
+  return useQuery({ queryKey: keys.adherence(scope.seniorId), queryFn: () => get<Adherence>('/medications/adherence', scope) });
+};
+export const useDigest = (kind: 'daily' | 'family_weekly', locale: 'en' | 'bn') => {
+  const scope = useSeniorScope();
+  return useQuery({ queryKey: keys.digest(kind, locale, scope.seniorId), queryFn: () => get<Digest>('/ai/digest', { kind, locale, ...scope }), staleTime: 10 * 60_000 });
+};
+export const useRecommendations = (type: 'meals' | 'events' | 'caregivers', locale: 'en' | 'bn') => {
+  const scope = useSeniorScope();
+  return useQuery({ queryKey: keys.recs(type, locale, scope.seniorId), queryFn: () => get<{ items: Recommendation[]; phrasedBy: 'ai' | 'template' }>('/ai/recommendations', { type, locale, ...scope }), staleTime: 5 * 60_000 });
+};
 
 /** Mark a dose taken/skipped and refresh everything that shows medication state. */
 export function useDoseAction() {
   const qc = useQueryClient();
+  const scope = useSeniorScope();
   return useMutation({
     mutationFn: ({ id, time, action }: { id: string; time: string; action: 'take' | 'skip' }) =>
-      post<{ alreadyLogged: boolean; pointsAwarded: number }>(`/medications/${id}/${action}`, { time }),
+      post<{ alreadyLogged: boolean; pointsAwarded: number }>(`/medications/${id}/${action}`, { time }, scope),
     onSuccess: () => {
-      for (const k of [keys.dosesToday, keys.meds, keys.adherence, keys.dashboard, ['meds', 'history'], ['rewards']]) qc.invalidateQueries({ queryKey: k as unknown as string[] });
+      // Prefix-invalidate: matches every senior's cached variant of each key, not just the current one.
+      for (const k of [['meds', 'today'], ['meds', 'list'], ['meds', 'adherence'], ['meds', 'history'], ['dashboard'], ['rewards']]) qc.invalidateQueries({ queryKey: k });
     },
   });
 }

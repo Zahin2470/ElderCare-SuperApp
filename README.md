@@ -1,19 +1,16 @@
-<div align="center">
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=shark&color=gradient&customColorList=2,15,30,50&height=200&section=header&text=ElderCare%20-%20SuperApp&fontSize=35&fontColor=ffffff&fontAlignY=40&animation=fadeIn" alt="ElderCare Shark Tooth" width="100%" />
+</p>
 
-# 👵🩺👴 ElderCare — SuperApp
+<p align="center">
+Care · Connect · Comfort - a unified platform for Bangladesh's elderly-care crisis.
+</p>
 
-### **Care · Connect · Comfort**
-
-**A unified platform addressing Bangladesh's elderly-care crisis.**
-
-</div>
-
-<p align="center"><img src="./frontend/src/assets/logo.webp" alt="ElderCare Logo" width="420" /></p>
+<p align="center"><img src="./frontend/src/assets/logo.webp" alt="ElderCare Logo" width="620" /></p>
 
 ElderCare brings caregiving, medication management, health records, telehealth, nutrition, co-living, mentoring and community into one app for seniors **and** their families.
 
-- **Prototype:** https://motto-truck-48556756.figma.site
-- **Demo video:** https://drive.google.com/file/d/1s6sIHRpsfK-G8IA0RTt6YToHT3oIBvgO/view?usp=sharing
+---
 
 ---
 
@@ -48,7 +45,7 @@ docker run -d --name eldercare-db -p 5432:5432 \
 
 # 2. backend  → http://localhost:4000
 cd backend
-cp .env.example .env              # defaults work for local dev
+cp .env.example .env          # defaults work for local dev
 npm ci
 npm run migrate && npm run seed   # schema + demo data (dev only)
 npm run dev
@@ -91,7 +88,8 @@ All ten modules read and write the database. Everything below is covered by API 
 | **AgeWell Living** | Room applications (modify / withdraw), shared-space booking with overlap protection, community chat. |
 | **Community** | Events with capacity-safe RSVP, "my events", persisted group chat, AI suggestions. |
 | **Rewards** | Append-only points ledger, once-per-day earn rules enforced by the database, concurrency-safe redemption with voucher codes, tiers from lifetime points. |
-| **Admin console** | Real: dashboard figures, user list/search/suspend with mandatory reason, audit log, roles matrix. *Sample data (clearly labelled in the UI):* Security Center, Module Management, System Settings. |
+| **Multi-senior support** | A family account linked to more than one senior gets a switcher (sidebar) to choose which person's Dashboard, SilverBox, Care360, TeleHealth, ElderLink, NutriSenior and AI features are showing; the choice is remembered per account and validated against real links. |
+| **Admin console** | Real: dashboard figures, user list/search/suspend with mandatory reason, audit log, roles matrix, **Security Center** (live sign-in sessions with revoke, locked-account list with unlock, real failed-login/2FA/token-theft events with severity, per-IP failed-attempt activity — all computed from data already collected, not sample data). *Sample data (clearly labelled in the UI):* Module Management, System Settings. |
 
 ---
 
@@ -122,12 +120,14 @@ Configure with `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` (default `claude-sonnet
 - **Passwords:** Argon2id. Server-enforced policy. Unknown-user and wrong-password paths take the same time and return the same error. 5 failures → 15-minute lockout.
 - **Sessions:** 15-minute JWT access token held **in memory only** (never localStorage); 30-day rotating refresh token in an `httpOnly`, `SameSite=Lax`, `Secure` (prod) cookie, stored hashed. Replaying a rotated token revokes the whole login session. Logout, password reset and suspension revoke tokens immediately.
 - **OTP:** 6 digits, HMAC-hashed at rest, 5-minute expiry, 3 attempts then burned, 60 s resend cooldown, 5/hour cap. Responses never reveal whether an account exists. Codes are echoed to the client **only outside production**.
+- **Notifications:** delivered by a real gateway — SMS via Twilio, email via any SMTP provider (`backend/src/lib/notify.ts`) — configured with environment variables. A production server missing the gateway for a given channel fails the request explicitly (`notification_failed`) instead of silently doing nothing; outside production it falls back to logging the code so local dev needs no credentials.
 - **Authorization:** one choke-point (`resolveSubject`) decides whose data a request touches: seniors → themselves (client-supplied ids are ignored), family → only accepted links (senior must consent). Admin accounts cannot read member health data through the member API.
 - **Admin:** password **and** TOTP (RFC 6238, replay-protected) — the password alone yields no session. Permissions enforced server-side per request; roles/status changes require a reason and are audited; admins cannot suspend themselves or mint admins over the API.
 - **Audit log:** append-only (database trigger blocks UPDATE/DELETE). Records logins, admin actions, record downloads and shares.
 - **Data integrity:** money is computed on the server; double-booking, over-capacity RSVPs, double redemption and duplicate doses are prevented by unique indexes and row locks and tested under concurrency.
 - **Uploads:** generated filenames, size and type limits, real file-signature check, `nosniff`, owner-only access.
-- **Ops:** helmet headers, CORS allow-list, rate limits, request logging without bodies/queries, uniform JSON errors with no stack traces, the server **refuses to start in production with the built-in dev secrets**.
+- **Error monitoring:** unexpected (5xx-class) errors — never routine 4xx failures like a wrong password — are reported to Sentry when `SENTRY_DSN` (backend) / `VITE_SENTRY_DSN` (frontend) are configured; without them, nothing is sent anywhere and the frontend never even downloads the reporting SDK (it's a dynamic import, lazy-loaded only when configured). The backend also catches uncaught exceptions and unhandled promise rejections, reports them, flushes with a bounded timeout, and exits cleanly for a process manager to restart — rather than hanging or crashing silently.
+- **Ops:** helmet headers, CORS allow-list, rate limits (optionally Redis-backed via `REDIS_URL` so they hold across multiple server instances; a Redis outage fails **open** rather than taking down the API — verified against a real Redis, including killing it mid-test), request logging without bodies/queries, uniform JSON errors with no stack traces, the server **refuses to start in production with the built-in dev secrets**.
 
 ---
 
@@ -137,6 +137,8 @@ Configure with `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` (default `claude-sonnet
 
 Errors are always `{ "error": { "code", "message", "details?" } }`. Phone numbers are normalised to E.164 (`+8801XXXXXXXXX`; operator prefixes 013–019).
 
+Every member-facing module (and its deep "frame" screens) is its own lazily-loaded chunk — a session that only opens Dashboard + SilverBox never downloads ElderLink/Care360/TeleHealth/…'s code. This cut the main bundle from ~405 KB to ~278 KB (gzipped: 114 → 85 KB).
+
 Front-end routes are real URLs (`/silverbox`, `/care360/C360_ViewRecord`), so refresh, back button and bookmarks work.
 
 ---
@@ -145,7 +147,7 @@ Front-end routes are real URLs (`/silverbox`, `/care360/C360_ViewRecord`), so re
 
 ```bash
 cd backend  && npm test     # 174 tests against a REAL PostgreSQL (TEST_DATABASE_URL, name must contain "test")
-cd frontend && npm test     # component + API-client tests
+cd frontend && npm test     # component + API-client + automated accessibility (axe-core) tests
 npm run typecheck           # from the repo root: both projects
 ```
 
@@ -158,12 +160,13 @@ CI: `.github/workflows/ci.yml` (Postgres service; typecheck + tests + build for 
 ## Going to production — checklist
 
 1. Set `NODE_ENV=production` and unique `JWT_ACCESS_SECRET` / `OTP_HMAC_SECRET` (the server will not start otherwise). Serve over HTTPS and set `TRUST_PROXY=1` behind your proxy.
-2. **Implement an SMS/email gateway** in `backend/src/lib/notify.ts` (only a console notifier exists). Without it nobody can verify an account in production.
+2. Set `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_FROM_NUMBER` (SMS) and/or `SMTP_URL` (email) — see `backend/.env.example`. Without at least the channel your users sign up with, they cannot verify an account: the server returns a clear error (`notification_failed`) rather than silently pretending to send.
 3. Move `STORAGE_DIR` to durable object storage (S3-compatible) — the local-disk driver is for a single server.
-4. Run migrations as a deploy step (`AUTO_MIGRATE=false`) and back up Postgres. **Do not run `seed` in production** (it refuses).
-5. Enrol real admins with `npm run totp` and remove the seeded demo accounts.
-6. Health data is sensitive personal data: complete a privacy/legal review (consent text, retention, breach process) before real users. A third-party AI provider receives only the minimised context described above.
-7. Set `VIDEO_BASE_URL` to a self-hosted Jitsi (or integrate your provider) to enable TeleHealth video.
+4. Run migrations as a deploy step (`AUTO_MIGRATE=false`). **Do not run `seed` in production** (it refuses).
+5. Set up backups — see [Backup & restore](#backup--restore) below.
+6. Enrol real admins with `npm run totp` and remove the seeded demo accounts.
+7. Health data is sensitive personal data: complete a privacy/legal review (consent text, retention, breach process) before real users. A third-party AI provider receives only the minimised context described above.
+8. Set `VIDEO_BASE_URL` to a self-hosted Jitsi (or integrate your provider) to enable TeleHealth video.
 
 ---
 
@@ -171,9 +174,10 @@ CI: `.github/workflows/ci.yml` (Postgres service; typecheck + tests + build for 
 
 Being explicit so nothing is mistaken for working:
 
-- **Not implemented:** Activity Log module (`D01_ActivityLog`), caregiver/dietitian chat, IoT/dispenser telemetry, WebSocket realtime (group chat polls every 5 s), background-check workflow, caregiver/partner-side apps, payment processing, admin Security Center / Module Management / System Settings back-ends, multi-senior switching for a family account with several linked seniors (the first linked senior is used), operational tools to advance meal-order/booking status.
+- **Not implemented:** Activity Log module (`D01_ActivityLog`), caregiver/dietitian chat, IoT/dispenser telemetry, WebSocket realtime (group chat polls every 5 s), background-check workflow, caregiver/partner-side apps, payment processing, admin Module Management / System Settings back-ends (Security Center is real — see above), operational tools to advance meal-order/booking status.
 - **TeleHealth video** needs a video host (`VIDEO_BASE_URL`); the previous simulated call screen was removed rather than left pretending to work.
-- **Untested here:** Docker images/compose (no Docker in the build sandbox), the live Anthropic API call, and visual/browser rendering (no browser available) — the frontend is verified by type-check, unit/component tests, production build and the route-contract test, not by visual QA. Please click through it once before release.
+- **Accessibility:** every main screen and the auth flow is audited automatically with axe-core (`frontend/src/test/*.a11y.test.tsx`) — missing labels, invalid ARIA, heading order, button names. This caught and fixed several real bugs (a `Progress` component that never reported its value to assistive tech, inconsistent heading levels, an unlabelled OTP input). It cannot check colour contrast, focus visibility, touch-target size, or real screen-reader behaviour (jsdom has no layout engine) — a manual pass in a browser with a screen reader is still worthwhile before launch.
+- **Untested here, for environment reasons (no Docker daemon, no browser, no git remote available in the build sandbox):** Docker images/compose, the live Anthropic API call, visual/browser QA, a real-browser end-to-end suite (e.g. Playwright), and a green run of `.github/workflows/ci.yml` on GitHub itself. The frontend is verified instead by type-check, unit/component tests (including automated accessibility audits), a production build, and a route-contract test — not by visual QA. Please click through it once, and push to let CI run for real, before release.
 - AI recommendation weights and the vitals bands are reasonable defaults, **not clinically validated**; have a clinician review them.
 
 ---

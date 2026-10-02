@@ -10,8 +10,10 @@ import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { CaregiverCard, Caregiver } from '../elderlink/CaregiverCard';
 import { QueryState } from '../common/QueryState';
+import { SkeletonCards } from '../common/Skeleton';
 import { useNavigation } from '../navigation/NavigationContext';
 import { ApiError, errorMessage, get, post } from '../../lib/api';
+import { useSeniorScope } from '../auth/AuthContext';
 import { clock, fmtDateTime, taka, todayISO } from '../../lib/format';
 
 const SERVICES = ['Companionship', 'Personal Care', 'Meal Prep', 'Medication Reminders', 'Transportation', 'Light Housekeeping', 'Mobility Assistance'];
@@ -38,7 +40,7 @@ export function EL01_SearchResults() {
         <Button size="sm" variant={!specialty ? 'default' : 'outline'} onClick={() => setSpecialty('')}>All</Button>
         {chips.map((c) => <Button key={c} size="sm" variant={specialty === c ? 'default' : 'outline'} onClick={() => setSpecialty(c)}>{c}</Button>)}
       </div>
-      <QueryState q={list} isEmpty={(l) => !l.length} empty="No caregivers match. Try fewer filters.">
+      <QueryState q={list} isEmpty={(l) => !l.length} empty="No caregivers match. Try fewer filters." skeleton={<SkeletonCards />}>
         {(l) => <div className="grid md:grid-cols-2 gap-4">{l.map((c) => <CaregiverCard key={c.id} c={c} onView={(x) => navigateToFrame('elderlink', 'EL02_Caregiver_Profile', x)} onBook={(x) => navigateToFrame('elderlink', 'EL03_ScheduleVisit', x)} />)}</div>}
       </QueryState>
     </div>
@@ -71,8 +73,9 @@ export function EL03_ScheduleVisit() {
   const valid = hours > 0 && hours <= 12;
   const estimate = valid ? Math.round(hours * c.hourlyRateBdt) : 0;
 
+  const scope = useSeniorScope();
   const book = useMutation({
-    mutationFn: () => post<{ booking: { id: string; startsAt: string; endsAt: string; services: string[]; totalBdt: number; status: string } }>('/caregivers/bookings', { caregiverId: c.id, date, startTime: start, endTime: end, services, notes: notes.trim() || undefined }),
+    mutationFn: () => post<{ booking: { id: string; startsAt: string; endsAt: string; services: string[]; totalBdt: number; status: string } }>('/caregivers/bookings', { caregiverId: c.id, date, startTime: start, endTime: end, services, notes: notes.trim() || undefined }, scope),
     onSuccess: (r) => { qc.invalidateQueries({ queryKey: ['caregivers'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); navigateToFrame('elderlink', 'EL05_Booking_Confirmation', { ...r.booking, caregiverName: c.name }); },
     onError: (e) => toast.error(e instanceof ApiError && e.code === 'unavailable' ? `${c.name} is already booked then — try another time.` : errorMessage(e)),
   });

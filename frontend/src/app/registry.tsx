@@ -1,24 +1,6 @@
 import { ComponentType, lazy } from 'react';
 import { Home, Users, Pill, Building2, Heart, Briefcase, Utensils, Video, Calendar, Gift, Bot, Palette, Map, LucideIcon } from 'lucide-react';
 
-import Dashboard from '../components/Dashboard';
-import ElderLink from '../components/ElderLink';
-import SilverBox from '../components/SilverBox';
-import AgeWellLiving from '../components/AgeWellLiving';
-import Care360 from '../components/Care360';
-import GoldenCareJobs from '../components/GoldenCareJobs';
-import NutriSenior from '../components/NutriSenior';
-import TeleHealth from '../components/TeleHealth';
-import CommunityActivities from '../components/CommunityActivities';
-import RewardsLoyalty from '../components/RewardsLoyalty';
-import CareAssistant from '../components/ai/CareAssistant';
-
-import { EL01_SearchResults, EL02_Caregiver_Profile, EL03_ScheduleVisit, EL05_Booking_Confirmation } from '../components/frames/ElderLinkFrames';
-import { NS01_MenuOverview, NS02_SelectPlan, NS03_PlaceOrder, NS04_TrackDelivery } from '../components/frames/NutriSeniorFrames';
-import { SB01_MedsOverview, SB02_MarkAsTaken, SB03_TakeNow, SB04_Med_History } from '../components/frames/SilverBoxFrames';
-import { C360_RecordsList, C360_UploadRecord, C360_ViewRecord, C360_ShareWithDoctor, C360_RequestRefill } from '../components/frames/Care360Frames';
-import { AW01_CommunityChatRoom, AW04_ApplyNow, AW05_ModifyApplication } from '../components/frames/AgeWellFrames';
-
 export type Role = 'senior' | 'family';
 export type ModulePage = ComponentType<{ userRole: Role }>;
 
@@ -31,6 +13,25 @@ export interface ModuleDef {
   /** Only listed in the sidebar in development builds (design-review tools). */
   devOnly?: boolean;
 }
+
+/**
+ * Every module (and its deep "frame" screens below) is its own lazy-loaded chunk: a session that
+ * only ever opens Dashboard + SilverBox should never download ElderLink/Care360/TeleHealth/…'s code.
+ * A module's frames live in the SAME chunk as the module itself (not split further) since opening
+ * one almost always means the other will be needed too — splitting them apart would just add a
+ * second round-trip for no real benefit.
+ */
+const Dashboard = lazy(() => import('../components/Dashboard'));
+const ElderLink = lazy(() => import('../components/ElderLink'));
+const SilverBox = lazy(() => import('../components/SilverBox'));
+const AgeWellLiving = lazy(() => import('../components/AgeWellLiving'));
+const Care360 = lazy(() => import('../components/Care360'));
+const GoldenCareJobs = lazy(() => import('../components/GoldenCareJobs'));
+const NutriSenior = lazy(() => import('../components/NutriSenior'));
+const TeleHealth = lazy(() => import('../components/TeleHealth'));
+const CommunityActivities = lazy(() => import('../components/CommunityActivities'));
+const RewardsLoyalty = lazy(() => import('../components/RewardsLoyalty'));
+const CareAssistant = lazy(() => import('../components/ai/CareAssistant'));
 
 // Design-review tools are code-split and never shipped to production users.
 const BrandShowcase = lazy(() => import('../components/brand/BrandShowcase'));
@@ -54,30 +55,39 @@ export const MODULES: ModuleDef[] = [
 
 export const visibleModules = () => MODULES.filter((m) => !m.devOnly || import.meta.env.DEV);
 
+/** Each `.then(m => ({ default: m.X }))` still resolves to the SAME chunk per source file — Rollup
+ * dedupes multiple lazy() references to one dynamic import() specifier into a single chunk, so this
+ * is one network request per module's frames, not one per frame. */
+const elderLinkFrames = () => import('../components/frames/ElderLinkFrames');
+const nutriSeniorFrames = () => import('../components/frames/NutriSeniorFrames');
+const silverBoxFrames = () => import('../components/frames/SilverBoxFrames');
+const care360Frames = () => import('../components/frames/Care360Frames');
+const ageWellFrames = () => import('../components/frames/AgeWellFrames');
+
 /** Deep frames. Frame ids are globally unique, so one flat table is enough. */
 export const FRAMES: Record<string, { module: string; Component: ComponentType; needsData?: boolean }> = {
-  EL01_SearchResults: { module: 'elderlink', Component: EL01_SearchResults },
-  EL02_Caregiver_Profile: { module: 'elderlink', Component: EL02_Caregiver_Profile, needsData: true },
-  EL03_ScheduleVisit: { module: 'elderlink', Component: EL03_ScheduleVisit, needsData: true },
-  EL05_Booking_Confirmation: { module: 'elderlink', Component: EL05_Booking_Confirmation },
+  EL01_SearchResults: { module: 'elderlink', Component: lazy(() => elderLinkFrames().then((m) => ({ default: m.EL01_SearchResults }))) },
+  EL02_Caregiver_Profile: { module: 'elderlink', Component: lazy(() => elderLinkFrames().then((m) => ({ default: m.EL02_Caregiver_Profile }))), needsData: true },
+  EL03_ScheduleVisit: { module: 'elderlink', Component: lazy(() => elderLinkFrames().then((m) => ({ default: m.EL03_ScheduleVisit }))), needsData: true },
+  EL05_Booking_Confirmation: { module: 'elderlink', Component: lazy(() => elderLinkFrames().then((m) => ({ default: m.EL05_Booking_Confirmation }))) },
 
-  NS01_MenuOverview: { module: 'nutrisenior', Component: NS01_MenuOverview },
-  NS02_SelectPlan: { module: 'nutrisenior', Component: NS02_SelectPlan },
-  NS03_PlaceOrder: { module: 'nutrisenior', Component: NS03_PlaceOrder, needsData: true },
-  NS04_TrackDelivery: { module: 'nutrisenior', Component: NS04_TrackDelivery },
+  NS01_MenuOverview: { module: 'nutrisenior', Component: lazy(() => nutriSeniorFrames().then((m) => ({ default: m.NS01_MenuOverview }))) },
+  NS02_SelectPlan: { module: 'nutrisenior', Component: lazy(() => nutriSeniorFrames().then((m) => ({ default: m.NS02_SelectPlan }))) },
+  NS03_PlaceOrder: { module: 'nutrisenior', Component: lazy(() => nutriSeniorFrames().then((m) => ({ default: m.NS03_PlaceOrder }))), needsData: true },
+  NS04_TrackDelivery: { module: 'nutrisenior', Component: lazy(() => nutriSeniorFrames().then((m) => ({ default: m.NS04_TrackDelivery }))) },
 
-  SB01_MedsOverview: { module: 'silverbox', Component: SB01_MedsOverview },
-  SB02_MarkAsTaken: { module: 'silverbox', Component: SB02_MarkAsTaken, needsData: true },
-  SB03_TakeNow: { module: 'silverbox', Component: SB03_TakeNow, needsData: true },
-  SB04_Med_History: { module: 'silverbox', Component: SB04_Med_History },
+  SB01_MedsOverview: { module: 'silverbox', Component: lazy(() => silverBoxFrames().then((m) => ({ default: m.SB01_MedsOverview }))) },
+  SB02_MarkAsTaken: { module: 'silverbox', Component: lazy(() => silverBoxFrames().then((m) => ({ default: m.SB02_MarkAsTaken }))), needsData: true },
+  SB03_TakeNow: { module: 'silverbox', Component: lazy(() => silverBoxFrames().then((m) => ({ default: m.SB03_TakeNow }))), needsData: true },
+  SB04_Med_History: { module: 'silverbox', Component: lazy(() => silverBoxFrames().then((m) => ({ default: m.SB04_Med_History }))) },
 
-  C360_RecordsList: { module: 'care360', Component: C360_RecordsList },
-  C360_UploadRecord: { module: 'care360', Component: C360_UploadRecord },
-  C360_ViewRecord: { module: 'care360', Component: C360_ViewRecord, needsData: true },
-  C360_ShareWithDoctor: { module: 'care360', Component: C360_ShareWithDoctor, needsData: true },
-  C360_RequestRefill: { module: 'care360', Component: C360_RequestRefill },
+  C360_RecordsList: { module: 'care360', Component: lazy(() => care360Frames().then((m) => ({ default: m.C360_RecordsList }))) },
+  C360_UploadRecord: { module: 'care360', Component: lazy(() => care360Frames().then((m) => ({ default: m.C360_UploadRecord }))) },
+  C360_ViewRecord: { module: 'care360', Component: lazy(() => care360Frames().then((m) => ({ default: m.C360_ViewRecord }))), needsData: true },
+  C360_ShareWithDoctor: { module: 'care360', Component: lazy(() => care360Frames().then((m) => ({ default: m.C360_ShareWithDoctor }))), needsData: true },
+  C360_RequestRefill: { module: 'care360', Component: lazy(() => care360Frames().then((m) => ({ default: m.C360_RequestRefill }))) },
 
-  AW01_CommunityChatRoom: { module: 'agewell', Component: AW01_CommunityChatRoom },
-  AW04_ApplyNow: { module: 'agewell', Component: AW04_ApplyNow, needsData: true },
-  AW05_ModifyApplication: { module: 'agewell', Component: AW05_ModifyApplication, needsData: true },
+  AW01_CommunityChatRoom: { module: 'agewell', Component: lazy(() => ageWellFrames().then((m) => ({ default: m.AW01_CommunityChatRoom }))) },
+  AW04_ApplyNow: { module: 'agewell', Component: lazy(() => ageWellFrames().then((m) => ({ default: m.AW04_ApplyNow }))), needsData: true },
+  AW05_ModifyApplication: { module: 'agewell', Component: lazy(() => ageWellFrames().then((m) => ({ default: m.AW05_ModifyApplication }))), needsData: true },
 };

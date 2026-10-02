@@ -47,7 +47,7 @@ export default function OTPInput({ length = 6, value, onChange, error, success }
   };
 
   return (
-    <div className="flex gap-3 justify-center">
+    <div className="flex gap-3 justify-center" role="group" aria-label={`${length}-digit verification code`}>
       {Array.from({ length }).map((_, index) => (
         <motion.div
           key={index}
@@ -59,6 +59,8 @@ export default function OTPInput({ length = 6, value, onChange, error, success }
             ref={(el) => (inputRefs.current[index] = el)}
             type="text"
             inputMode="numeric"
+            aria-label={`Digit ${index + 1} of ${length}`}
+            aria-invalid={error ? true : undefined}
             maxLength={1}
             value={value[index] || ''}
             onChange={(e) => handleChange(index, e)}

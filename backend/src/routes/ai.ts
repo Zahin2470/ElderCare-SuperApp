@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { sharedStore } from '../lib/rateLimitStore.js';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { query } from '../db.js';
@@ -15,7 +16,7 @@ export const aiRouter = Router();
 aiRouter.use(requireAuth, requireMember);
 
 const perUser = rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false, skip: () => config.isTest,
-  keyGenerator: (req) => req.user!.id, validate: { keyGeneratorIpFallback: false }, handler: (_r, _s, next) => next(tooMany('Slowing down a little — please wait a moment.')) });
+  keyGenerator: (req) => req.user!.id, validate: { keyGeneratorIpFallback: false }, handler: (_r, _s, next) => next(tooMany('Slowing down a little — please wait a moment.')), store: sharedStore('ai') });
 
 const locale = z.enum(['en', 'bn']);
 const audience = (req: any) => (req.user.role === 'family' ? 'family' : 'senior') as 'senior' | 'family';

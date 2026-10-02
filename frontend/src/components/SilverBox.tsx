@@ -12,7 +12,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useNavigation } from './navigation/NavigationContext';
 import { errorMessage, post } from '../lib/api';
 import { clock, fmtDate } from '../lib/format';
-import { Dose, keys, useAdherence, useDosesToday, useMedications } from '../lib/queries';
+import { Dose, useAdherence, useDosesToday, useMedications } from '../lib/queries';
+import { SkeletonRows } from './common/Skeleton';
+import { useSeniorScope } from './auth/AuthContext';
 
 const STATUS: Record<Dose['status'], { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; border: string }> = {
   taken: { label: 'Taken', variant: 'secondary', border: 'border-green-200 bg-green-50/40' },
@@ -24,14 +26,15 @@ const STATUS: Record<Dose['status'], { label: string; variant: 'default' | 'seco
 
 function AddMedicationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
+  const scope = useSeniorScope();
   const [f, setF] = useState({ name: '', dosage: '', purpose: '', stock: '', refill: '' });
   const [times, setTimes] = useState<string[]>(['08:00']);
   const add = useMutation({
     mutationFn: () => post('/medications', {
       name: f.name.trim(), dosage: f.dosage.trim(), purpose: f.purpose.trim() || undefined, scheduleTimes: times.filter(Boolean),
       stockRemaining: Number(f.stock) || 0, stockTotal: Number(f.stock) || 0, refillDate: f.refill || undefined,
-    }),
-    onSuccess: () => { toast.success('Medication added'); qc.invalidateQueries({ queryKey: ['meds'] }); qc.invalidateQueries({ queryKey: keys.dashboard }); onOpenChange(false); setF({ name: '', dosage: '', purpose: '', stock: '', refill: '' }); setTimes(['08:00']); },
+    }, scope),
+    onSuccess: () => { toast.success('Medication added'); qc.invalidateQueries({ queryKey: ['meds'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); onOpenChange(false); setF({ name: '', dosage: '', purpose: '', stock: '', refill: '' }); setTimes(['08:00']); },
     onError: (e) => toast.error(errorMessage(e)),
   });
   const valid = f.name.trim() && f.dosage.trim() && times.some(Boolean);
@@ -106,7 +109,7 @@ export default function SilverBox({ userRole }: { userRole: 'senior' | 'family' 
 
       <section aria-label="Today's schedule">
         <h2 className="text-gray-900 mb-4">Today's schedule</h2>
-        {doses.isLoading ? <p className="text-gray-500" role="status">Loading…</p> : doses.isError ? <p role="alert" className="text-red-700">{errorMessage(doses.error)}</p> : !doses.data?.length ? (
+        {doses.isLoading ? <SkeletonRows /> : doses.isError ? <p role="alert" className="text-red-700">{errorMessage(doses.error)}</p> : !doses.data?.length ? (
           <Card className="p-6 text-gray-600">No medicines scheduled today. Add one to get started.</Card>
         ) : (
           <div className="space-y-3">

@@ -9,14 +9,15 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { QueryState } from '../common/QueryState';
 import { useNavigation } from '../navigation/NavigationContext';
+import { useSeniorScope } from '../auth/AuthContext';
 import { download, errorMessage, get, post, upload } from '../../lib/api';
 import { fmtDate, taka, todayISO } from '../../lib/format';
 import type { Doctor } from '../telehealth/DoctorCard';
 
 export interface RecordDto { id: string; type: string; title: string; category: string; provider: string | null; recordDate: string; status: 'pending' | 'reviewed'; fileName: string | null; fileMime: string | null; fileSize: number | null; hasFile: boolean }
 export interface Rx { id: string; medication: string; dosage: string; prescribedBy: string | null; startDate: string | null; refillsRemaining: number; status: string }
-export const useRecords = () => useQuery({ queryKey: ['care360', 'records'], queryFn: () => get<{ records: RecordDto[] }>('/care360/records').then((r) => r.records) });
-export const usePrescriptions = () => useQuery({ queryKey: ['care360', 'rx'], queryFn: () => get<{ prescriptions: Rx[] }>('/care360/prescriptions').then((r) => r.prescriptions) });
+export const useRecords = () => { const scope = useSeniorScope(); return useQuery({ queryKey: ['care360', 'records', scope.seniorId], queryFn: () => get<{ records: RecordDto[] }>('/care360/records', scope).then((r) => r.records) }); };
+export const usePrescriptions = () => { const scope = useSeniorScope(); return useQuery({ queryKey: ['care360', 'rx', scope.seniorId], queryFn: () => get<{ prescriptions: Rx[] }>('/care360/prescriptions', scope).then((r) => r.prescriptions) }); };
 
 const kb = (n: number | null) => (n == null ? '' : n > 1_048_576 ? `${(n / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
@@ -58,8 +59,9 @@ export function C360_UploadRecord() {
   const [file, setFile] = useState<File | null>(null);
   const tooBig = !!file && file.size > 10 * 1024 * 1024;
   const badType = !!file && !['application/pdf', 'image/jpeg', 'image/png'].includes(file.type);
+  const scope = useSeniorScope();
   const save = useMutation({
-    mutationFn: () => { const form = new FormData(); Object.entries(f).forEach(([k, v]) => v && form.append(k, v)); if (file) form.append('file', file); return upload('/care360/records', form); },
+    mutationFn: () => { const form = new FormData(); Object.entries(f).forEach(([k, v]) => v && form.append(k, v)); if (file) form.append('file', file); return upload('/care360/records', form, scope); },
     onSuccess: () => { toast.success('Record saved'); qc.invalidateQueries({ queryKey: ['care360'] }); navigateToFrame('care360', 'C360_RecordsList'); },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -88,8 +90,9 @@ export function C360_UploadRecord() {
 export function C360_ViewRecord() {
   const { navigateToFrame, currentNavigation } = useNavigation();
   const r = currentNavigation.data as RecordDto;
+  const scope = useSeniorScope();
   const dl = useMutation({
-    mutationFn: async () => { const blob = await download(`/care360/records/${r.id}/file`); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = r.fileName ?? 'record'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10_000); },
+    mutationFn: async () => { const blob = await download(`/care360/records/${r.id}/file`, scope); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = r.fileName ?? 'record'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10_000); },
     onError: (e) => toast.error(errorMessage(e)),
   });
   return (
@@ -116,8 +119,9 @@ export function C360_ShareWithDoctor() {
   const doctors = useQuery({ queryKey: ['telehealth', 'doctors'], queryFn: () => get<{ doctors: Doctor[] }>('/telehealth/doctors').then((d) => d.doctors) });
   const [doctorId, setDoctorId] = useState('');
   const [days, setDays] = useState(7);
+  const scope = useSeniorScope();
   const share = useMutation({
-    mutationFn: () => post(`/care360/records/${r.id}/share`, { doctorId, days }),
+    mutationFn: () => post(`/care360/records/${r.id}/share`, { doctorId, days }, scope),
     onSuccess: () => { toast.success(`Shared for ${days} day${days > 1 ? 's' : ''}. Access ends automatically.`); navigateToFrame('care360', 'C360_RecordsList'); },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -138,7 +142,8 @@ export function C360_ShareWithDoctor() {
 export function C360_RequestRefill() {
   const qc = useQueryClient();
   const rx = usePrescriptions();
-  const refill = useMutation({ mutationFn: (id: string) => post(`/care360/prescriptions/${id}/refill`), onSuccess: () => { toast.success('Refill requested'); qc.invalidateQueries({ queryKey: ['care360'] }); }, onError: (e) => toast.error(errorMessage(e)) });
+  const scope = useSeniorScope();
+  const refill = useMutation({ mutationFn: (id: string) => post(`/care360/prescriptions/${id}/refill`, undefined, scope), onSuccess: () => { toast.success('Refill requested'); qc.invalidateQueries({ queryKey: ['care360'] }); }, onError: (e) => toast.error(errorMessage(e)) });
   return (
     <div className="max-w-3xl mx-auto space-y-5">
       <div><Back label="Care360" /><h1 className="text-gray-900">Request a refill</h1></div>

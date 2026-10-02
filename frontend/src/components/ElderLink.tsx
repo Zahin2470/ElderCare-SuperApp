@@ -6,9 +6,11 @@ import { Badge } from './ui/badge';
 import { CaregiverCard } from './elderlink/CaregiverCard';
 import { Recommendations } from './ai/Recommendations';
 import { QueryState } from './common/QueryState';
+import { SkeletonCards } from './common/Skeleton';
 import { useCaregivers } from './frames/ElderLinkFrames';
 import { useNavigation } from './navigation/NavigationContext';
 import { errorMessage, get, post } from '../lib/api';
+import { useSeniorScope } from './auth/AuthContext';
 import { fmtDateTime, taka } from '../lib/format';
 
 interface Booking { id: string; startsAt: string; endsAt: string; services: string[]; totalBdt: number; status: 'pending' | 'confirmed' | 'cancelled' | 'completed'; caregiverName: string }
@@ -16,10 +18,11 @@ interface Booking { id: string; startsAt: string; endsAt: string; services: stri
 export default function ElderLink({ userRole }: { userRole: 'senior' | 'family' }) {
   const { navigateToFrame } = useNavigation();
   const qc = useQueryClient();
-  const bookings = useQuery({ queryKey: ['caregivers', 'bookings'], queryFn: () => get<{ bookings: Booking[] }>('/caregivers/bookings').then((r) => r.bookings) });
+  const scope = useSeniorScope();
+  const bookings = useQuery({ queryKey: ['caregivers', 'bookings', scope.seniorId], queryFn: () => get<{ bookings: Booking[] }>('/caregivers/bookings', scope).then((r) => r.bookings) });
   const caregivers = useCaregivers();
   const cancel = useMutation({
-    mutationFn: (id: string) => post(`/caregivers/bookings/${id}/cancel`),
+    mutationFn: (id: string) => post(`/caregivers/bookings/${id}/cancel`, undefined, scope),
     onSuccess: () => { toast.success('Booking cancelled'); qc.invalidateQueries({ queryKey: ['caregivers'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -51,7 +54,7 @@ export default function ElderLink({ userRole }: { userRole: 'senior' | 'family' 
 
       <section aria-label="Available caregivers">
         <h2 className="text-gray-900 mb-4">Available caregivers</h2>
-        <QueryState q={caregivers} isEmpty={(l) => !l.length}>
+        <QueryState q={caregivers} isEmpty={(l) => !l.length} skeleton={<SkeletonCards />}>
           {(l) => <div className="grid md:grid-cols-2 gap-4">{l.map((c) => <CaregiverCard key={c.id} c={c} onView={(x) => navigateToFrame('elderlink', 'EL02_Caregiver_Profile', x)} onBook={(x) => navigateToFrame('elderlink', 'EL03_ScheduleVisit', x)} />)}</div>}
         </QueryState>
       </section>

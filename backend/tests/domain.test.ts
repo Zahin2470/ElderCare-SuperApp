@@ -73,6 +73,22 @@ describe('vitals & rewards', () => {
     expect((await api().get('/api/rewards/summary').set(auth(t))).body.balance).toBe(250);
     expect((await one<any>('SELECT count(DISTINCT code)::int AS n FROM reward_redemptions')).n).toBe(2);
   });
+  it('summary reports REAL month/redeemed figures (not hardcoded): only this month\'s earnings count, spending and last month are excluded', async () => {
+    const t = await asSenior();
+    await query('DELETE FROM points_ledger WHERE user_id=$1', [ids.senior.id]);
+    const monthStart = `${localNow().date.slice(0, 7)}-01`;
+    await query(`INSERT INTO points_ledger (user_id, delta, reason, local_day) VALUES ($1,100,'this month a',$2),($1,40,'this month b',$2),($1,900,'last month',$3),($1,-30,'spent this month',$2)`,
+      [ids.senior.id, monthStart, addDays(monthStart, -1)]);
+    let sum = (await api().get('/api/rewards/summary').set(auth(t))).body;
+    expect(sum.earnedThisMonth).toBe(140);          // 100 + 40; the 900 is last month, the -30 is spending
+    expect(sum.redeemedCount).toBe(0);
+    expect(sum.balance).toBe(1010);                 // 100+40+900-30
+    const reward = await one<any>(`SELECT id FROM rewards WHERE cost=250`);
+    expect((await api().post('/api/rewards/redeem').set(auth(t)).send({ rewardId: reward.id })).status).toBe(201);
+    sum = (await api().get('/api/rewards/summary').set(auth(t))).body;
+    expect(sum.redeemedCount).toBe(1);
+    expect(sum.earnedThisMonth).toBe(140);          // redeeming is a debit, never counted as earnings
+  });
   it('refuses when the balance is short and explains by how much', async () => {
     const r = await api().post('/api/rewards/redeem').set(auth(await asOther())).send({ rewardId: (await one<any>(`SELECT id FROM rewards WHERE cost=250`)).id });
     expect(r.status).toBe(402); expect(r.body.error.message).toMatch(/250 more/);

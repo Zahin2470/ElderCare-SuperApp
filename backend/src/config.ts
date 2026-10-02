@@ -25,10 +25,34 @@ const schema = z.object({
   AI_DAILY_MESSAGE_LIMIT: z.coerce.number().int().default(30),
   // Base URL of a video-meeting host (e.g. a self-hosted Jitsi Meet). Unset = video visits are not offered.
   VIDEO_BASE_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)),
+
+  // ── Error monitoring (optional) ──
+  SENTRY_DSN: z.string().optional(),
+
+  // ── Redis (optional) — shares rate-limit counters across server instances.
+  // Without it, each instance rate-limits independently, which under-counts total traffic
+  // once you run more than one instance (e.g. behind a load balancer).
+  REDIS_URL: z.string().optional(),
+
+  // ── SMS gateway (Twilio) — all three required together, or all left unset ──
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM_NUMBER: z.string().optional(),
+
+  // ── Email gateway (any SMTP provider) ──
+  SMTP_URL: z.string().optional(),                      // e.g. smtp://user:pass@smtp.example.com:587
+  SMTP_FROM: z.string().default('ElderCare <no-reply@eldercare.app>'),
   AI_TIMEOUT_MS: z.coerce.number().int().default(25_000),
 });
 
-const parsed = schema.safeParse(process.env);
+const schemaWithGatewayConsistency = schema.superRefine((v, ctx) => {
+  const twilioFields = [v.TWILIO_ACCOUNT_SID, v.TWILIO_AUTH_TOKEN, v.TWILIO_FROM_NUMBER];
+  if (twilioFields.some(Boolean) && !twilioFields.every(Boolean)) {
+    ctx.addIssue({ code: 'custom', path: ['TWILIO_ACCOUNT_SID'], message: 'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER must all be set together, or all left unset' });
+  }
+});
+
+const parsed = schemaWithGatewayConsistency.safeParse(process.env);
 if (!parsed.success) {
   console.error('Invalid environment configuration:', parsed.error.flatten().fieldErrors);
   process.exit(1);
@@ -40,6 +64,9 @@ export const config = {
   isTest: parsed.data.NODE_ENV === 'test',
   corsOrigins: parsed.data.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
   aiEnabled: Boolean(parsed.data.ANTHROPIC_API_KEY),
+  smsEnabled: Boolean(parsed.data.TWILIO_ACCOUNT_SID),
+  monitoringEnabled: Boolean(parsed.data.SENTRY_DSN),
+  emailEnabled: Boolean(parsed.data.SMTP_URL),
 };
 
 // Fail closed: never boot a production server that signs tokens with a published default secret.

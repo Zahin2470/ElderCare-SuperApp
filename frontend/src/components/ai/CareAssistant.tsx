@@ -4,7 +4,7 @@ import { Bot, Send, PhoneCall, RotateCcw, Info } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth, useSeniorScope } from '../auth/AuthContext';
 import { ApiError, errorMessage, get, post } from '../../lib/api';
 
 interface Msg { id: number; role: 'user' | 'assistant'; content: string; source?: 'claude' | 'fallback' | 'safety'; safety?: string | null }
@@ -23,6 +23,7 @@ let nextId = 1;
 
 export default function CareAssistant() {
   const { user, setLocale } = useAuth();
+  const scope = useSeniorScope();
   const locale = user?.locale ?? 'en';
   const t = T[locale];
   const status = useQuery({ queryKey: ['ai', 'status'], queryFn: () => get<{ mode: 'ai' | 'basic'; emergencyNumber: string }>('/ai/status'), staleTime: Infinity });
@@ -39,9 +40,15 @@ export default function CareAssistant() {
     if (helloLocale !== locale && messages.length === 1) { setMessages([{ id: 0, role: 'assistant', content: T[locale].hello }]); setHelloLocale(locale); }
   }, [locale, helloLocale, messages.length]);
   useEffect(() => { bottom.current?.scrollIntoView?.({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {
+    if (scope.seniorId === undefined) return; // senior accounts, or before any link loads — nothing to reset
+    setMessages([{ id: nextId++, role: 'assistant', content: t.hello }]);
+    setConversationId(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope.seniorId]);
 
   const chat = useMutation({
-    mutationFn: (message: string) => post<ChatReply>('/ai/chat', { message, conversationId, locale }),
+    mutationFn: (message: string) => post<ChatReply>('/ai/chat', { message, conversationId, locale, ...scope }),
     onSuccess: (r) => { setConversationId(r.conversationId); setMessages((m) => [...m, { id: nextId++, role: 'assistant', content: r.reply, source: r.source, safety: r.safety }]); },
     onError: (e) => setMessages((m) => [...m, { id: nextId++, role: 'assistant', content: e instanceof ApiError && e.status === 429 ? e.message : errorMessage(e, 'Sorry, I could not answer just now. Please try again.') }]),
   });

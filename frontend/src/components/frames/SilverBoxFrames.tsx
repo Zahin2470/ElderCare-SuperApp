@@ -6,9 +6,11 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { useNavigation } from '../navigation/NavigationContext';
+import { useSeniorScope } from '../auth/AuthContext';
 import { del, errorMessage, get } from '../../lib/api';
 import { clock, fmtDate, fmtTime } from '../../lib/format';
 import { Dose, useDoseAction, useMedications } from '../../lib/queries';
+import { SkeletonRows } from '../common/Skeleton';
 
 function Back({ label = 'Back' }: { label?: string }) {
   const { navigateBack } = useNavigation();
@@ -19,15 +21,16 @@ function Back({ label = 'Back' }: { label?: string }) {
 export function SB01_MedsOverview() {
   const meds = useMedications();
   const qc = useQueryClient();
+  const scope = useSeniorScope();
   const remove = useMutation({
-    mutationFn: (id: string) => del(`/medications/${id}`),
+    mutationFn: (id: string) => del(`/medications/${id}`, scope),
     onSuccess: () => { toast.success('Medication removed'); qc.invalidateQueries({ queryKey: ['meds'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); },
     onError: (e) => toast.error(errorMessage(e)),
   });
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       <div><Back label="SilverBox" /><h1 className="text-gray-900">All medications</h1></div>
-      {meds.isLoading ? <p role="status" className="text-gray-500">Loading…</p> : !meds.data?.length ? <Card className="p-6 text-gray-600">No medications yet.</Card> : meds.data.map((m) => (
+      {meds.isLoading ? <SkeletonRows /> : !meds.data?.length ? <Card className="p-6 text-gray-600">No medications yet.</Card> : meds.data.map((m) => (
         <Card key={m.id} className="p-5 flex flex-wrap items-center gap-4">
           <div className="p-3 rounded-full bg-purple-100"><Pill className="w-6 h-6 text-purple-600" aria-hidden /></div>
           <div className="flex-1 min-w-48">
@@ -92,7 +95,8 @@ const FILTERS = ['all', 'taken', 'missed', 'skipped'] as const;
 
 export function SB04_Med_History() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('all');
-  const q = useQuery({ queryKey: ['meds', 'history', 30], queryFn: () => get<{ history: HistoryEntry[] }>('/medications/history', { days: 30 }).then((r) => r.history) });
+  const scope = useSeniorScope();
+  const q = useQuery({ queryKey: ['meds', 'history', 30, scope.seniorId], queryFn: () => get<{ history: HistoryEntry[] }>('/medications/history', { days: 30, ...scope }).then((r) => r.history) });
   const rows = (q.data ?? []).filter((e) => filter === 'all' || e.status === filter);
   const byDate = rows.reduce<Record<string, HistoryEntry[]>>((acc, e) => { (acc[e.date] ??= []).push(e); return acc; }, {});
   const count = (s: HistoryEntry['status']) => (q.data ?? []).filter((e) => e.status === s).length;
@@ -107,7 +111,7 @@ export function SB04_Med_History() {
           </Button>
         ))}
       </div>
-      {q.isLoading ? <p role="status" className="text-gray-500">Loading…</p> : q.isError ? <p role="alert" className="text-red-700">{errorMessage(q.error)}</p> : !rows.length ? <Card className="p-6 text-gray-600">Nothing to show.</Card> : Object.entries(byDate).map(([date, list]) => (
+      {q.isLoading ? <SkeletonRows rows={4} /> : q.isError ? <p role="alert" className="text-red-700">{errorMessage(q.error)}</p> : !rows.length ? <Card className="p-6 text-gray-600">Nothing to show.</Card> : Object.entries(byDate).map(([date, list]) => (
         <section key={date} aria-label={fmtDate(date)}>
           <h2 className="text-sm text-gray-500 mb-2">{fmtDate(`${date}T12:00:00Z`, { weekday: 'long', month: 'short', day: 'numeric' })}</h2>
           <Card className="divide-y">

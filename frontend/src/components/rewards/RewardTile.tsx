@@ -50,7 +50,7 @@ export default function RewardTile({ reward, userPoints, onRedeem }: RewardTileP
 
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
-          <h4 className="text-gray-900 flex-1">{reward.title}</h4>
+          <h3 className="text-gray-900 flex-1">{reward.title}</h3>
           <Badge variant="outline" className="text-xs ml-2">
             {reward.category}
           </Badge>

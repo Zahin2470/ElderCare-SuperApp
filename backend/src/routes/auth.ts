@@ -1,6 +1,7 @@
 import { Router, Response, Request } from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
+import { sharedStore } from '../lib/rateLimitStore.js';
 import { config } from '../config.js';
 import { one, query, tx } from '../db.js';
 import { conflict, forbidden, HttpError, tooMany, unauthorized } from '../lib/errors.js';
@@ -24,11 +25,11 @@ const LOCK_MS = 15 * 60_000;
 const REFRESH_GRACE_MS = 10_000; // tolerate two tabs refreshing at the same instant
 export const REFRESH_COOKIE = 'ec_rt';
 
-const limiter = (max: number, windowMs = 15 * 60_000) =>
+const limiter = (name: string, max: number, windowMs = 15 * 60_000) =>
   rateLimit({ windowMs, limit: max, standardHeaders: 'draft-7', legacyHeaders: false, skip: () => config.isTest,
-    handler: (_req, _res, next) => next(tooMany()) });
-const authLimiter = limiter(30);
-const otpLimiter = limiter(10, 60 * 60_000);
+    handler: (_req, _res, next) => next(tooMany()), store: sharedStore(name) });
+const authLimiter = limiter('auth', 30);
+const otpLimiter = limiter('otp', 10, 60 * 60_000);
 
 // ───────── validation ─────────
 const passwordRule = z.string().min(8).max(128)

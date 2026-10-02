@@ -9,6 +9,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { QueryState } from '../common/QueryState';
+import { SkeletonTable } from '../common/Skeleton';
 import { useAdminAuth, hasPermission } from './AdminAuthContext';
 import { AdminUserRow, ROLE_LABEL, useAdminUsers } from './adminApi';
 import { errorMessage, patch } from '../../lib/api';
@@ -54,9 +55,9 @@ export function UserManagement({ onViewUser }: { onViewUser: (id: string) => voi
         <select aria-label="Filter by role" value={role} onChange={(e) => reset(setRole)(e.target.value)} className="h-11 rounded-md border px-3 bg-white"><option value="">All roles</option>{Object.entries(ROLE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <select aria-label="Filter by status" value={status} onChange={(e) => reset(setStatus)(e.target.value)} className="h-11 rounded-md border px-3 bg-white"><option value="">Any status</option><option value="active">Active</option><option value="suspended">Suspended</option></select>
       </div>
-      <QueryState q={users} isEmpty={(d) => !d.users.length} empty="No users match.">{(d) => (<>
+      <QueryState q={users} isEmpty={(d) => !d.users.length} empty="No users match." skeleton={<SkeletonTable columns={5} />}>{(d) => (<>
         <Card className="overflow-x-auto"><table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-600"><tr>{['Name', 'Contact', 'Role', 'Status', 'Last sign-in', ''].map((h) => <th key={h} scope="col" className="px-4 py-3 font-medium">{h}</th>)}</tr></thead>
+          <thead className="bg-gray-50 text-left text-gray-600"><tr>{['Name', 'Contact', 'Role', 'Status', 'Last sign-in', ''].map((h) => <th key={h} scope="col" className="px-4 py-3 font-medium">{h || <span className="sr-only">Actions</span>}</th>)}</tr></thead>
           <tbody className="divide-y">{d.users.map((u) => (
             <tr key={u.id} className="hover:bg-gray-50">
               <td className="px-4 py-3"><button className="text-purple-700 hover:underline text-left" onClick={() => onViewUser(u.id)}>{u.fullName}</button></td>

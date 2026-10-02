@@ -9,7 +9,9 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import DoctorCard, { Doctor } from './telehealth/DoctorCard';
 import { QueryState } from './common/QueryState';
+import { SkeletonCards } from './common/Skeleton';
 import { ApiError, errorMessage, get, post } from '../lib/api';
+import { useSeniorScope } from './auth/AuthContext';
 import { clock, fmtDateTime, taka, todayISO } from '../lib/format';
 
 interface Appt { id: string; startsAt: string; type: 'video' | 'in_person' | 'chat'; reason: string | null; location: string | null; status: string; diagnosis: string | null; consultNotes: string | null; doctorId: string; doctorName: string; specialty: string; hospital: string | null }
@@ -23,8 +25,9 @@ function BookingView({ doctor, onDone, onBack }: { doctor: Doctor; onDone: () =>
   const [reason, setReason] = useState('');
   const slots = useQuery({ queryKey: ['telehealth', 'slots', doctor.id, date], queryFn: () => get<Slots>(`/telehealth/doctors/${doctor.id}/slots`, { date }) });
 
+  const scope = useSeniorScope();
   const book = useMutation({
-    mutationFn: () => post('/telehealth/appointments', { doctorId: doctor.id, date, time, type, reason: reason.trim() || undefined }),
+    mutationFn: () => post('/telehealth/appointments', { doctorId: doctor.id, date, time, type, reason: reason.trim() || undefined }, scope),
     onSuccess: () => { toast.success(`Booked with ${doctor.name} at ${clock(time)}`); qc.invalidateQueries({ queryKey: ['telehealth'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); onDone(); },
     onError: (e) => {
       toast.error(errorMessage(e));
@@ -70,17 +73,18 @@ export default function TeleHealth() {
   const [search, setSearch] = useState('');
   const [specialty, setSpecialty] = useState<string | null>(null);
   const doctors = useQuery({ queryKey: ['telehealth', 'doctors'], queryFn: () => get<{ doctors: Doctor[] }>('/telehealth/doctors').then((r) => r.doctors) });
-  const appts = useQuery({ queryKey: ['telehealth', 'appointments'], queryFn: () => get<{ upcoming: Appt[]; past: Appt[] }>('/telehealth/appointments') });
+  const scope = useSeniorScope();
+  const appts = useQuery({ queryKey: ['telehealth', 'appointments', scope.seniorId], queryFn: () => get<{ upcoming: Appt[]; past: Appt[] }>('/telehealth/appointments', scope) });
   const specialties = useMemo(() => [...new Set((doctors.data ?? []).map((d) => d.specialty))], [doctors.data]);
   const shown = (doctors.data ?? []).filter((d) => (!specialty || d.specialty === specialty) && (`${d.name} ${d.hospital ?? ''} ${d.specialty}`).toLowerCase().includes(search.toLowerCase()));
 
   const join = useMutation({
-    mutationFn: (id: string) => get<{ url: string }>(`/telehealth/appointments/${id}/join`),
+    mutationFn: (id: string) => get<{ url: string }>(`/telehealth/appointments/${id}/join`, scope),
     onSuccess: (r) => window.open(r.url, '_blank', 'noopener,noreferrer'),
     onError: (e) => toast.error(errorMessage(e)),
   });
   const cancel = useMutation({
-    mutationFn: (id: string) => post(`/telehealth/appointments/${id}/cancel`),
+    mutationFn: (id: string) => post(`/telehealth/appointments/${id}/cancel`, undefined, scope),
     onSuccess: () => { toast.success('Appointment cancelled'); qc.invalidateQueries({ queryKey: ['telehealth'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -114,7 +118,7 @@ export default function TeleHealth() {
           <Button size="sm" variant={specialty === null ? 'default' : 'outline'} onClick={() => setSpecialty(null)}>All</Button>
           {specialties.map((s) => <Button key={s} size="sm" variant={specialty === s ? 'default' : 'outline'} onClick={() => setSpecialty(s)}>{s}</Button>)}
         </div>
-        <QueryState q={doctors} isEmpty={() => !shown.length} empty="No doctors match your search.">{() => <div className="grid md:grid-cols-2 gap-4">{shown.map((d) => <DoctorCard key={d.id} doctor={d} onBook={setBooking} />)}</div>}</QueryState>
+        <QueryState q={doctors} isEmpty={() => !shown.length} empty="No doctors match your search." skeleton={<SkeletonCards />}>{() => <div className="grid md:grid-cols-2 gap-4">{shown.map((d) => <DoctorCard key={d.id} doctor={d} onBook={setBooking} />)}</div>}</QueryState>
       </section>
 
       <section aria-label="Past consultations">

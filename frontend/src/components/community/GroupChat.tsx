@@ -5,6 +5,7 @@ import { Send } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { errorMessage, get, post } from '../../lib/api';
+import { SkeletonRows } from '../common/Skeleton';
 import { fmtTime } from '../../lib/format';
 
 export interface Group { id: string; name: string; members: number; lastMessage: string | null; lastMessageAt: string | null; unread: number; joined: boolean }
@@ -33,7 +34,7 @@ export function GroupChat({ group, onBack }: { group: Group; onBack?: () => void
         <div className="p-6 text-center space-y-3"><p className="text-gray-600">Join this group to read and post messages.</p><Button onClick={() => join.mutate()} disabled={join.isPending}>Join group</Button></div>
       ) : (<>
         <div className="h-72 overflow-y-auto p-4 space-y-2 bg-gray-50" role="log" aria-live="polite" aria-label={`${group.name} messages`}>
-          {msgs.isLoading && <p className="text-gray-500" role="status">Loading…</p>}
+          {msgs.isLoading && <SkeletonRows rows={2} />}
           {msgs.data?.length === 0 && <p className="text-gray-500 text-center">No messages yet — say hello!</p>}
           {msgs.data?.map((m) => (
             <div key={m.id} className={`flex ${m.mine ? 'justify-end' : 'justify-start'}`}>

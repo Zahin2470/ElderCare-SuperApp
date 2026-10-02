@@ -2,12 +2,14 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import { sharedStore } from './lib/rateLimitStore.js';
 import helmet from 'helmet';
 import multer from 'multer';
 import { randomUUID } from 'node:crypto';
 import { config } from './config.js';
 import { pool } from './db.js';
 import { HttpError, tooMany } from './lib/errors.js';
+import { getReporter } from './lib/monitoring.js';
 import { adminRouter } from './routes/admin.js';
 import { agewellRouter } from './routes/agewell.js';
 import { aiRouter } from './routes/ai.js';
@@ -40,7 +42,7 @@ export function createApp() {
     next();
   });
 
-  app.use('/api', rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false, skip: () => config.isTest, handler: (_r, _s, next) => next(tooMany()) }));
+  app.use('/api', rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false, skip: () => config.isTest, handler: (_r, _s, next) => next(tooMany()), store: sharedStore('global') }));
 
   app.get('/api/healthz', async (_req, res) => {
     try { await pool.query('SELECT 1'); res.json({ ok: true }); } catch { res.status(503).json({ ok: false }); }
@@ -73,6 +75,7 @@ export function createApp() {
     if (err?.code === '22P02') return void res.status(400).json({ error: { code: 'bad_request', message: 'Malformed identifier' } });
     const id = res.getHeader('X-Request-Id');
     console.error(`[error] ${id} ${req.method} ${req.path}`, err); // full detail stays in server logs…
+    getReporter().captureException(err, { requestId: id, method: req.method, path: req.path, userId: req.user?.id }); // no body/query — may carry health data
     res.status(500).json({ error: { code: 'internal', message: 'Something went wrong on our side.', requestId: id } }); // …never in the response
   });
 

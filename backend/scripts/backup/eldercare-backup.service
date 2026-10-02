@@ -1,0 +1,8 @@
+[Unit]
+Description=ElderCare database backup
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/eldercare/backup.env
+# EnvironmentFile must define DATABASE_URL (the live database, read-only access is enough).
+ExecStart=/opt/eldercare/backend/scripts/backup/backup.sh /var/backups/eldercare

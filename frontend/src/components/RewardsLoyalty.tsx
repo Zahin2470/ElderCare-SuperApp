@@ -10,9 +10,10 @@ import PointsCard from './rewards/PointsCard';
 import RewardTile from './rewards/RewardTile';
 import { errorMessage, get, post } from '../lib/api';
 import { fmtDate } from '../lib/format';
+import { SkeletonPage } from './common/Skeleton';
 
 interface Summary {
-  balance: number; lifetimeEarned: number;
+  balance: number; lifetimeEarned: number; earnedThisMonth: number; redeemedCount: number;
   recentActivity: { id: number; delta: number; reason: string; createdAt: string }[];
   earnActions: { key: string; title: string; description: string; points: number; available: boolean }[];
   rewards: { id: string; title: string; description: string; cost: number; category: string }[];
@@ -36,7 +37,7 @@ export default function RewardsLoyalty() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  if (isLoading) return <p className="p-6 text-gray-500" role="status">Loading rewards…</p>;
+  if (isLoading) return <SkeletonPage />;
   if (isError || !data) return <div className="p-6" role="alert"><p className="text-red-700 mb-3">{errorMessage(error)}</p><Button onClick={() => refetch()}>Try again</Button></div>;
 
   const tierIdx = TIERS.reduce((acc, t, i) => (data.lifetimeEarned >= t.from ? i : acc), 0);
@@ -46,7 +47,8 @@ export default function RewardsLoyalty() {
     <div className="max-w-6xl mx-auto space-y-8">
       <div><h1 className="text-gray-900 mb-2">Rewards & Loyalty</h1><p className="text-gray-600">Earn points for looking after your health and taking part</p></div>
 
-      <PointsCard points={data.balance} tier={TIERS[tierIdx].name} nextTierPoints={next?.from ?? data.lifetimeEarned} />
+      <PointsCard points={data.balance} lifetimeEarned={data.lifetimeEarned} tier={TIERS[tierIdx].name} tierFrom={TIERS[tierIdx].from}
+        next={next ? { name: next.name, from: next.from } : undefined} earnedThisMonth={data.earnedThisMonth} redeemedCount={data.redeemedCount} />
 
       <section aria-label="Ways to earn">
         <h2 className="text-gray-900 mb-4">Earn points today</h2>

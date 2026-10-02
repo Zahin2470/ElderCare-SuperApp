@@ -8,6 +8,7 @@ import { QueryState } from './common/QueryState';
 import { PlanCard, useMenu, useOrders, usePlans } from './frames/NutriSeniorFrames';
 import { useNavigation } from './navigation/NavigationContext';
 import { get } from '../lib/api';
+import { useSeniorScope } from './auth/AuthContext';
 import { fmtDateTime, taka } from '../lib/format';
 
 export default function NutriSenior({ userRole }: { userRole: 'senior' | 'family' }) {
@@ -15,7 +16,8 @@ export default function NutriSenior({ userRole }: { userRole: 'senior' | 'family
   const plans = usePlans();
   const menu = useMenu();
   const orders = useOrders();
-  const stats = useQuery({ queryKey: ['nutrition', 'stats'], queryFn: () => get<{ calories: number; calorieTarget: number; proteinG: number }>('/nutrition/stats') });
+  const scope = useSeniorScope();
+  const stats = useQuery({ queryKey: ['nutrition', 'stats', scope.seniorId], queryFn: () => get<{ calories: number; calorieTarget: number; proteinG: number }>('/nutrition/stats', scope) });
   const active = orders.data?.active[0];
 
   return (

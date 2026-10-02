@@ -14,7 +14,13 @@ rewardsRouter.use(requireAuth, requireMember);
 rewardsRouter.get('/summary', wrap(async (req, res) => {
   const uid = req.user!.id;
   const earnedToday = new Set((await query<{ actionKey: string }>('SELECT action_key FROM points_ledger WHERE user_id=$1 AND local_day=$2 AND delta>0 AND action_key IS NOT NULL', [uid, localNow().date])).map((r) => r.actionKey));
+  const monthStart = `${localNow().date.slice(0, 7)}-01`;
+  const [{ n: earnedThisMonth }, { n: redeemedCount }] = await Promise.all([
+    one<{ n: number }>(`SELECT COALESCE(SUM(delta),0)::int AS n FROM points_ledger WHERE user_id=$1 AND delta>0 AND local_day >= $2`, [uid, monthStart]).then((r) => r!),
+    one<{ n: number }>('SELECT count(*)::int AS n FROM reward_redemptions WHERE user_id=$1', [uid]).then((r) => r!),
+  ]);
   res.json({
+    earnedThisMonth, redeemedCount,
     balance: await balance(uid),
     lifetimeEarned: (await one<{ n: number }>('SELECT COALESCE(SUM(delta),0)::int AS n FROM points_ledger WHERE user_id=$1 AND delta>0', [uid]))!.n,
     recentActivity: await query('SELECT id, delta, reason, created_at FROM points_ledger WHERE user_id=$1 ORDER BY id DESC LIMIT 15', [uid]),

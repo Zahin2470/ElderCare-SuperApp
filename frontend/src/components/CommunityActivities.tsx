@@ -7,6 +7,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Recommendations } from './ai/Recommendations';
 import { QueryState } from './common/QueryState';
+import { SkeletonCards } from './common/Skeleton';
 import { Group, GroupChat, useGroups } from './community/GroupChat';
 import { ApiError, del, errorMessage, get, post } from '../lib/api';
 import { fmtDate, fmtTime } from '../lib/format';
@@ -64,7 +65,7 @@ export default function CommunityActivities() {
           <Button size="sm" variant={!category ? 'default' : 'outline'} onClick={() => setCategory('')}>All</Button>
           {(category && !categories.includes(category) ? [category, ...categories] : categories).map((c) => <Button key={c} size="sm" variant={category === c ? 'default' : 'outline'} onClick={() => setCategory(c)}>{c}</Button>)}
         </div>
-        <QueryState q={events} isEmpty={(l) => !l.length} empty="No upcoming events in this category.">{(l) => <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{l.map((e) => <EventCard key={e.id} e={e} />)}</div>}</QueryState>
+        <QueryState q={events} isEmpty={(l) => !l.length} empty="No upcoming events in this category." skeleton={<SkeletonCards count={6} columns="md:grid-cols-2 lg:grid-cols-3" />}>{(l) => <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{l.map((e) => <EventCard key={e.id} e={e} />)}</div>}</QueryState>
       </>)}
 
       {tab === 'mine' && <QueryState q={mine} isEmpty={(l) => !l.length} empty="You haven't joined any events yet.">{(l) => <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{l.map((e) => <EventCard key={e.id} e={e} />)}</div>}</QueryState>}

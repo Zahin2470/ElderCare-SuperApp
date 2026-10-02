@@ -15,7 +15,7 @@ export function DailyDigestCard() {
   const kind = user?.role === 'family' ? 'family_weekly' : 'daily';
   const { data, isLoading, isError } = useDigest(kind, locale);
 
-  if (isLoading) return <Card className="p-6 animate-pulse h-40" aria-busy="true" aria-label="Loading your summary" />;
+  if (isLoading) return <Card role="status" className="p-6 animate-pulse h-40" aria-busy="true" aria-label="Loading your summary" />;
   if (isError || !data) return null; // a summary is a nicety — never block the dashboard on it
   const { content, facts } = data;
 

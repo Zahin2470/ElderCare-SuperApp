@@ -42,7 +42,7 @@ export function FamilyRequests() {
   if (!data?.requests.length) return null;
   return (
     <Card className="p-5 border-l-4 border-l-purple-500 bg-purple-50/50" role="region" aria-label="Family access requests">
-      <h3 className="text-gray-900 mb-3">Someone wants to help look after you</h3>
+      <h2 className="text-gray-900 mb-3">Someone wants to help look after you</h2>
       <div className="space-y-3">
         {data.requests.map((r) => (
           <div key={r.familyId} className="flex flex-wrap items-center justify-between gap-3">

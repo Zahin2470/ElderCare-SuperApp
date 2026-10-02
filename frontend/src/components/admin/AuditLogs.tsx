@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { QueryState } from '../common/QueryState';
+import { SkeletonTable } from '../common/Skeleton';
 import { useAuditLogs } from './adminApi';
 import { fmtDateTime } from '../../lib/format';
 
@@ -25,9 +26,9 @@ export function AuditLogs() {
         <label className="text-sm">From<Input type="date" value={from} onChange={(e) => reset(() => setFrom(e.target.value))} className="h-11" /></label>
         <label className="text-sm">To<Input type="date" value={to} onChange={(e) => reset(() => setTo(e.target.value))} className="h-11" /></label>
       </div>
-      <QueryState q={logs} isEmpty={(d) => !d.logs.length} empty="No events match.">{(d) => (<>
+      <QueryState q={logs} isEmpty={(d) => !d.logs.length} empty="No events match." skeleton={<SkeletonTable columns={4} />}>{(d) => (<>
         <Card className="overflow-x-auto"><table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-600"><tr>{['When', 'Event', 'By', 'IP', ''].map((h) => <th key={h} scope="col" className="px-4 py-3 font-medium">{h}</th>)}</tr></thead>
+          <thead className="bg-gray-50 text-left text-gray-600"><tr>{['When', 'Event', 'By', 'IP', ''].map((h) => <th key={h} scope="col" className="px-4 py-3 font-medium">{h || <span className="sr-only">Actions</span>}</th>)}</tr></thead>
           <tbody className="divide-y">{d.logs.map((l) => (<>
             <tr key={l.id}>
               <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDateTime(l.createdAt)}</td>

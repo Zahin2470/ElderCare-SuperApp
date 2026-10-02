@@ -119,7 +119,63 @@ adminRouter.get('/audit-logs', requirePermission('audit_logs.read'), wrap(async 
   res.json({ logs: rows, page: q.page, pageSize: size });
 }));
 
-// The console's "view as user" banner is recorded here. This endpoint ONLY writes the audit trail:
+// ───────── Security Center: real signals derived from data already collected ─────────
+// "Last activity" below reflects the last token refresh for that session (roughly every access-token
+// lifetime), not every single API call — a deliberately honest approximation rather than tracking a
+// per-request timestamp we don't otherwise need.
+adminRouter.get('/security/sessions', requirePermission('security.read'), wrap(async (_req, res) => {
+  const sessions = await query(`
+    SELECT rt.family_id, rt.user_id, u.full_name AS user_name, u.role AS user_role, rt.ip, rt.user_agent,
+           rt.created_at AS last_refreshed_at, (SELECT MIN(created_at) FROM refresh_tokens x WHERE x.family_id = rt.family_id) AS started_at
+      FROM refresh_tokens rt JOIN users u ON u.id = rt.user_id
+     WHERE rt.revoked_at IS NULL AND rt.expires_at > now()
+     ORDER BY rt.created_at DESC LIMIT 200`);
+  res.json({ sessions });
+}));
+
+adminRouter.post('/security/sessions/:familyId/revoke', requirePermission('security.write'), wrap(async (req, res) => {
+  const familyId = parse(uuid, req.params.familyId);
+  const row = await one<{ userId: string }>('SELECT user_id FROM refresh_tokens WHERE family_id=$1 AND revoked_at IS NULL', [familyId]);
+  if (!row) throw notFound('No active session found (it may have already ended)');
+  await query('UPDATE refresh_tokens SET revoked_at = now() WHERE family_id=$1 AND revoked_at IS NULL', [familyId]);
+  await auditFromReq(req, 'admin.session_revoke', { subjectType: 'user', subjectId: row.userId, metadata: { familyId } });
+  res.json({ ok: true });
+}));
+
+adminRouter.get('/security/locked-users', requirePermission('security.read'), wrap(async (_req, res) => {
+  res.json({ users: await query(`SELECT id, full_name, email, phone, role, failed_logins, locked_until FROM users WHERE locked_until IS NOT NULL AND locked_until > now() ORDER BY locked_until DESC`) });
+}));
+
+adminRouter.post('/security/locked-users/:id/unlock', requirePermission('security.write'), wrap(async (req, res) => {
+  const id = parse(uuid, req.params.id);
+  const r = await query(`UPDATE users SET locked_until=NULL, failed_logins=0 WHERE id=$1 AND locked_until IS NOT NULL AND locked_until > now() RETURNING id`, [id]);
+  if (!r.length) throw notFound('That account is not currently locked');
+  await auditFromReq(req, 'admin.account_unlock', { subjectType: 'user', subjectId: id });
+  res.json({ ok: true });
+}));
+
+const SECURITY_ACTIONS = ['auth.login_failed', 'auth.refresh_reuse_detected', 'admin.login_failed', 'admin.2fa_failed'] as const;
+const SEVERITY: Record<string, 'critical' | 'medium'> = { 'auth.refresh_reuse_detected': 'critical' };
+
+adminRouter.get('/security/events', requirePermission('security.read'), wrap(async (_req, res) => {
+  const rows = await query<any>(`SELECT a.id, a.action, a.actor_id, u.full_name AS actor_name, a.metadata, a.ip, a.created_at
+      FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id
+     WHERE a.action = ANY($1) AND a.created_at > now() - interval '7 days'
+     ORDER BY a.id DESC LIMIT 200`, [SECURITY_ACTIONS as unknown as string[]]);
+  res.json({ events: rows.map((e) => ({ ...e, severity: SEVERITY[e.action] ?? 'medium' })) });
+}));
+
+adminRouter.get('/security/ip-activity', requirePermission('security.read'), wrap(async (_req, res) => {
+  res.json({
+    ips: await query(`
+      SELECT ip, count(*)::int AS total_events, count(*) FILTER (WHERE action = ANY($1))::int AS failed_events, max(created_at) AS last_seen
+        FROM audit_logs WHERE created_at > now() - interval '24 hours' AND ip IS NOT NULL
+       GROUP BY ip HAVING count(*) FILTER (WHERE action = ANY($1)) > 0
+       ORDER BY failed_events DESC LIMIT 20`, [SECURITY_ACTIONS as unknown as string[]]),
+  });
+}));
+
+
 // it does not issue a token for, or expose any data of, the target user.
 adminRouter.post('/impersonation-events', requirePermission('impersonation'), wrap(async (req, res) => {
   const b = parse(z.object({ phase: z.enum(['start', 'end']), targetUserId: uuid, reason: z.string().trim().min(10).max(300).optional() })

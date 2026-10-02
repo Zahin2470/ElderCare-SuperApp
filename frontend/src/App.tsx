@@ -9,17 +9,19 @@ import { Button } from './components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { Toaster } from './components/ui/sonner';
 import { LogoCompact } from './components/brand/LogoImage';
+import { SeniorSwitcher } from './components/family/SeniorSwitcher';
 import { FRAMES, MODULES, Role, visibleModules } from './app/registry';
+import { SkeletonPage } from './components/common/Skeleton';
 
 // The admin console is a separate audience; keep it out of the main bundle.
 const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then((m) => ({ default: m.AdminPortal })));
 
 function PageFallback() {
-  return <div className="p-8 text-gray-500" role="status">Loading…</div>;
+  return <SkeletonPage />;
 }
 
 function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
-  const { user, logout, linkedSeniors } = useAuth();
+  const { user, logout } = useAuth();
   const { currentNavigation, navigateToFrame } = useNavigation();
   const accountLabel = user?.role === 'family' ? 'Family account' : 'Senior account';
 
@@ -56,12 +58,12 @@ function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
       </nav>
 
       <div className="mt-6 space-y-3">
-        <div className="p-4 bg-white rounded-lg border-2 border-purple-200">
-          <p className="text-sm text-gray-600 mb-1">{accountLabel}</p>
-          <p className="font-medium text-purple-700">{user?.fullName || 'User'}</p>
-          {user?.role === 'family' && linkedSeniors[0] && (
-            <p className="text-xs text-gray-600 mt-1">Caring for: {linkedSeniors[0].fullName}</p>
-          )}
+        <div className="p-4 bg-white rounded-lg border-2 border-purple-200 space-y-2">
+          <div>
+            <p className="text-sm text-gray-600 mb-1">{accountLabel}</p>
+            <p className="font-medium text-purple-700">{user?.fullName || 'User'}</p>
+          </div>
+          <SeniorSwitcher />
         </div>
         <Button variant="outline" size="sm" onClick={logout} className="w-full text-destructive hover:text-destructive hover:bg-destructive/10">
           <LogOut className="w-4 h-4 mr-2" />
@@ -73,7 +75,7 @@ function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
 }
 
 function MainApp() {
-  const { user } = useAuth();
+  const { user, isLoadingLinkedSeniors } = useAuth();
   const { currentNavigation, navigateToFrame } = useNavigation();
   const userRole: Role = user?.role === 'family' ? 'family' : 'senior';
 
@@ -128,7 +130,9 @@ function MainApp() {
 
         <div className="p-4 md:p-8">
           <ErrorBoundary resetKey={`${currentNavigation.module}/${currentNavigation.frame}`}>
-            <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+            {/* A family account's screens are all scoped to a linked senior; wait until we know which one, rather than
+                fetching unscoped first (which could flash the wrong person's data). */}
+            <Suspense fallback={<PageFallback />}>{isLoadingLinkedSeniors ? <PageFallback /> : renderPage()}</Suspense>
           </ErrorBoundary>
         </div>
       </main>

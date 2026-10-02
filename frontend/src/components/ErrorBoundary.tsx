@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from './ui/button';
+import { getReporter } from '../lib/monitoring';
 
 interface Props {
   children: ReactNode;
@@ -20,6 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('UI error boundary caught:', error, info.componentStack);
+    getReporter().captureException(error, { componentStack: info.componentStack ?? undefined });
   }
 
   componentDidUpdate(prev: Props) {

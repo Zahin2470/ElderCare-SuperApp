@@ -2,6 +2,7 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { QueryState } from './common/QueryState';
+import { SkeletonMetrics } from './common/Skeleton';
 import { RecordRow, useRecords, usePrescriptions } from './frames/Care360Frames';
 import { useNavigation } from './navigation/NavigationContext';
 import { useDashboard } from '../lib/queries';
@@ -23,7 +24,7 @@ export default function Care360({ userRole }: { userRole: 'senior' | 'family' })
 
       <section aria-label="Latest readings">
         <h2 className="text-gray-900 mb-4">Latest readings</h2>
-        <QueryState q={dash} isEmpty={(d) => !d.metrics.length} empty="No readings yet — log one from the Dashboard.">{(d) => (
+        <QueryState q={dash} isEmpty={(d) => !d.metrics.length} empty="No readings yet — log one from the Dashboard." skeleton={<SkeletonMetrics />}>{(d) => (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{d.metrics.map((m) => (
             <Card key={m.kind} className="p-4"><p className="text-sm text-gray-600">{m.label}</p><p className="text-xl text-gray-900">{m.value2 != null ? `${m.value1}/${m.value2}` : m.value1} <span className="text-sm text-gray-500">{m.unit}</span></p><Badge variant={m.status === 'high' ? 'destructive' : 'secondary'} className="capitalize mt-1">{m.status === 'elevated' ? 'above usual' : m.status}</Badge></Card>
           ))}</div>

@@ -8,13 +8,14 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { useAuth } from './auth/AuthContext';
+import { useAuth, useSeniorScope } from './auth/AuthContext';
 import { useNavigation } from './navigation/NavigationContext';
 import { DailyDigestCard } from './ai/DailyDigestCard';
+import { SkeletonPage } from './common/Skeleton';
 import { FamilyInvite, FamilyRequests } from './family/FamilyLinks';
 import { ApiError, errorMessage, post } from '../lib/api';
 import { fmtDateTime, fmtLongToday, clock } from '../lib/format';
-import { keys, Metric, useDashboard, useDosesToday, useMedications } from '../lib/queries';
+import { Metric, useDashboard, useDosesToday, useMedications } from '../lib/queries';
 
 const ICONS = { blood_pressure: Heart, heart_rate: HeartPulse, blood_sugar: Droplet, weight: Scale } as const;
 const STATUS_STYLE: Record<Metric['status'], { badge: 'secondary' | 'destructive' | 'outline'; text: string; bg: string; color: string }> = {
@@ -36,14 +37,15 @@ const QUICK_ACTIONS = [
 
 function CheckInDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
+  const scope = useSeniorScope();
   const [kind, setKind] = useState<Metric['kind']>('blood_pressure');
   const [v1, setV1] = useState('');
   const [v2, setV2] = useState('');
   const save = useMutation({
-    mutationFn: () => post<{ status: Metric['status']; pointsAwarded: number }>('/care360/metrics', { kind, value1: Number(v1), value2: kind === 'blood_pressure' ? Number(v2) : undefined }),
+    mutationFn: () => post<{ status: Metric['status']; pointsAwarded: number }>('/care360/metrics', { kind, value1: Number(v1), value2: kind === 'blood_pressure' ? Number(v2) : undefined }, scope),
     onSuccess: (r) => {
       toast.success(r.pointsAwarded ? `Saved. +${r.pointsAwarded} reward points!` : 'Reading saved.');
-      qc.invalidateQueries({ queryKey: keys.dashboard });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       qc.invalidateQueries({ queryKey: ['ai'] });
       qc.invalidateQueries({ queryKey: ['rewards'] });
       setV1(''); setV2(''); onOpenChange(false);
@@ -75,20 +77,21 @@ function CheckInDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
 }
 
 export default function Dashboard({ userRole }: { userRole: 'senior' | 'family' }) {
-  const { user, linkedSeniors } = useAuth();
+  const { user, linkedSeniors, selectedSeniorId } = useAuth();
   const { navigateToFrame } = useNavigation();
   const [checkIn, setCheckIn] = useState(false);
   const dash = useDashboard();
   const doses = useDosesToday();
   const meds = useMedications();
   const firstName = (user?.fullName ?? 'there').split(' ')[0];
-  const subject = userRole === 'family' ? linkedSeniors[0]?.fullName.split(' ')[0] ?? 'your loved one' : 'you';
+  const selectedSenior = linkedSeniors.find((s) => s.id === selectedSeniorId);
+  const subject = userRole === 'family' ? selectedSenior?.fullName.split(' ')[0] ?? 'your loved one' : 'you';
 
   // A family account with no accepted link has nothing to show yet.
   if (dash.error instanceof ApiError && dash.error.status === 404) {
     return <div className="max-w-7xl mx-auto space-y-6"><h1 className="text-gray-900">Welcome, {firstName}!</h1><FamilyInvite /></div>;
   }
-  if (dash.isLoading) return <div className="max-w-7xl mx-auto p-6 text-gray-500" role="status">Loading your dashboard…</div>;
+  if (dash.isLoading) return <SkeletonPage />;
   if (dash.isError || !dash.data) return <div className="max-w-7xl mx-auto p-6" role="alert"><p className="text-red-700 mb-3">{errorMessage(dash.error)}</p><Button onClick={() => dash.refetch()}>Try again</Button></div>;
 
   const d = dash.data;
@@ -120,7 +123,7 @@ export default function Dashboard({ userRole }: { userRole: 'senior' | 'family' 
           <div className="flex items-start gap-3">
             <AlertCircle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-1" aria-hidden />
             <div className="flex-1 space-y-3">
-              <h3 className="text-orange-900">{userRole === 'family' ? 'Care alerts' : 'Reminders & alerts'}</h3>
+              <h2 className="text-orange-900">{userRole === 'family' ? 'Care alerts' : 'Reminders & alerts'}</h2>
               {alerts.map((a) => (
                 <div key={a.message} className="flex items-start justify-between gap-4"><p className="text-orange-800">{a.message}</p>{a.when && <span className="text-sm text-orange-600 whitespace-nowrap">{a.when}</span>}</div>
               ))}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the ElderCare database backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+# Spreads load if several timers fire at once; harmless for a single host.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

@@ -9,7 +9,9 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Progress } from '../ui/progress';
 import { QueryState } from '../common/QueryState';
+import { SkeletonCards } from '../common/Skeleton';
 import { useNavigation } from '../navigation/NavigationContext';
+import { useSeniorScope } from '../auth/AuthContext';
 import { errorMessage, get, post } from '../../lib/api';
 import { fmtDateTime, taka, todayISO } from '../../lib/format';
 
@@ -20,7 +22,7 @@ export interface CheckoutData { plan?: Plan; lines?: { item: MenuItem; qty: numb
 
 export const useMenu = () => useQuery({ queryKey: ['nutrition', 'menu'], queryFn: () => get<{ items: MenuItem[] }>('/nutrition/menu').then((r) => r.items) });
 export const usePlans = () => useQuery({ queryKey: ['nutrition', 'plans'], queryFn: () => get<{ plans: Plan[] }>('/nutrition/plans').then((r) => r.plans) });
-export const useOrders = () => useQuery({ queryKey: ['nutrition', 'orders'], queryFn: () => get<{ active: Order[]; history: Order[] }>('/nutrition/orders'), refetchInterval: 30_000 });
+export const useOrders = () => { const scope = useSeniorScope(); return useQuery({ queryKey: ['nutrition', 'orders', scope.seniorId], queryFn: () => get<{ active: Order[]; history: Order[] }>('/nutrition/orders', scope), refetchInterval: 30_000 }); };
 
 function Back({ label = 'Back' }: { label?: string }) {
   const { navigateBack } = useNavigation();
@@ -52,7 +54,7 @@ export function NS01_MenuOverview() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-24">
       <div><Back label="NutriSenior" /><h1 className="text-gray-900">Menu</h1></div>
-      <QueryState q={menu} isEmpty={(m) => !m.length}>
+      <QueryState q={menu} isEmpty={(m) => !m.length} skeleton={<SkeletonCards count={6} columns="md:grid-cols-2" />}>
         {(items) => types.map((t) => items.some((i) => i.mealType === t) && (
           <section key={t} aria-label={t}><h2 className="text-gray-900 mb-3">{t}</h2>
             <div className="grid md:grid-cols-2 gap-3">{items.filter((i) => i.mealType === t).map((i) => (
@@ -100,8 +102,9 @@ export function NS03_PlaceOrder() {
   const [time, setTime] = useState('18:00');
   const estimate = (data.plan?.pricePerDayBdt ?? 0) + (data.lines ?? []).reduce((s, l) => s + l.item.priceBdt * l.qty, 0);
 
+  const scope = useSeniorScope();
   const order = useMutation({
-    mutationFn: () => post('/nutrition/orders', { planId: data.plan?.id, items: (data.lines ?? []).map((l) => ({ menuItemId: l.item.id, qty: l.qty })), date, time, address: address.trim() }),
+    mutationFn: () => post('/nutrition/orders', { planId: data.plan?.id, items: (data.lines ?? []).map((l) => ({ menuItemId: l.item.id, qty: l.qty })), date, time, address: address.trim() }, scope),
     onSuccess: () => { toast.success('Order placed!'); qc.invalidateQueries({ queryKey: ['nutrition'] }); navigateToFrame('nutrisenior', 'NS04_TrackDelivery'); },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -133,8 +136,9 @@ const STEP_LABEL: Record<string, string> = { placed: 'Order placed', preparing: 
 export function NS04_TrackDelivery() {
   const orders = useOrders();
   const qc = useQueryClient();
-  const cancel = useMutation({ mutationFn: (id: string) => post(`/nutrition/orders/${id}/cancel`), onSuccess: () => { toast.success('Order cancelled'); qc.invalidateQueries({ queryKey: ['nutrition'] }); }, onError: (e) => toast.error(errorMessage(e)) });
-  const rate = useMutation({ mutationFn: ({ id, rating }: { id: string; rating: number }) => post(`/nutrition/orders/${id}/rate`, { rating }), onSuccess: () => { toast.success('Thanks for your feedback!'); qc.invalidateQueries({ queryKey: ['nutrition'] }); }, onError: (e) => toast.error(errorMessage(e)) });
+  const scope = useSeniorScope();
+  const cancel = useMutation({ mutationFn: (id: string) => post(`/nutrition/orders/${id}/cancel`, undefined, scope), onSuccess: () => { toast.success('Order cancelled'); qc.invalidateQueries({ queryKey: ['nutrition'] }); }, onError: (e) => toast.error(errorMessage(e)) });
+  const rate = useMutation({ mutationFn: ({ id, rating }: { id: string; rating: number }) => post(`/nutrition/orders/${id}/rate`, { rating }, scope), onSuccess: () => { toast.success('Thanks for your feedback!'); qc.invalidateQueries({ queryKey: ['nutrition'] }); }, onError: (e) => toast.error(errorMessage(e)) });
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

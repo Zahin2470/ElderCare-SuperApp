@@ -9,6 +9,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { QueryState } from './common/QueryState';
+import { SkeletonCards } from './common/Skeleton';
 import { ApiError, errorMessage, get, patch, post } from '../lib/api';
 import { fmtDateTime, taka, todayISO } from '../lib/format';
 
@@ -90,7 +91,7 @@ export default function GoldenCareJobs() {
           <Button size="sm" variant={!expertise ? 'default' : 'outline'} onClick={() => setExpertise('')}>All</Button>
           {(cats.data ?? []).map((c) => <Button key={c.name} size="sm" variant={expertise === c.name ? 'default' : 'outline'} onClick={() => setExpertise(c.name)}>{c.name} ({c.count})</Button>)}
         </div>
-        <QueryState q={mentors} isEmpty={(m) => !m.length} empty="No mentors match your search.">
+        <QueryState q={mentors} isEmpty={(m) => !m.length} empty="No mentors match your search." skeleton={<SkeletonCards />}>
           {(m) => <div className="grid md:grid-cols-2 gap-4">{m.map((x) => (
             <Card key={x.id} className="p-5 flex flex-col gap-2">
               <div className="flex items-start justify-between"><div><p className="text-gray-900 flex items-center gap-2">{x.name}{x.verified && <ShieldCheck className="w-4 h-4 text-green-600" aria-label="Verified" />}</p><p className="text-sm text-purple-700">{x.expertise}</p></div>

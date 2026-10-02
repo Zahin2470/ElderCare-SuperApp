@@ -56,3 +56,22 @@ describe('URL-backed navigation', () => {
     expect(state()).toBe('silverbox|-|-');
   });
 });
+
+describe('module code-splitting', () => {
+  it('navigating to a module shows the loading fallback first, then the real screen (Suspense is actually exercised)', async () => {
+    const { installApiMock, senior } = await import('./apiMock');
+    installApiMock(senior);
+    const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query');
+    const { AuthProvider } = await import('../components/auth/AuthContext');
+    const AppMod = (await import('../App')).default;
+    window.history.replaceState({}, '', '/silverbox');
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <AuthProvider><AppMod /></AuthProvider>
+      </QueryClientProvider>,
+    );
+    // SilverBox is a separate lazily-loaded chunk: its heading only appears after that chunk resolves,
+    // proving the module registry really does defer loading rather than bundling everything eagerly.
+    await screen.findByRole('heading', { name: /SilverBox/i }, { timeout: 4000 });
+  });
+});

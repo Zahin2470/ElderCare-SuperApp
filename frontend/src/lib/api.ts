@@ -8,6 +8,8 @@
  *  - On page load, `refreshSession()` trades that cookie for a fresh access token, which is how a reload keeps you signed in.
  *  - A 401 triggers exactly one refresh + retry. Concurrent refreshes are merged into one request (single-flight).
  */
+import { getReporter } from './monitoring';
+
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api';
 
 export type Role = 'senior' | 'family' | 'super_admin' | 'security_admin' | 'operations_admin' | 'clinical_admin';
@@ -48,7 +50,11 @@ async function toError(res: Response): Promise<ApiError> {
   let payload: any = null;
   try { payload = await res.json(); } catch { /* non-JSON error page */ }
   const e = payload?.error;
-  return new ApiError(res.status, e?.code ?? 'http_error', e?.message ?? `Request failed (${res.status})`, e?.details);
+  const err = new ApiError(res.status, e?.code ?? 'http_error', e?.message ?? `Request failed (${res.status})`, e?.details);
+  // Only genuinely unexpected server-side failures — never a 4xx (wrong password, validation, a
+  // full event) and never a network TypeError (common with flaky mobile connections, not an app bug).
+  if (res.status >= 500) getReporter().captureException(err, { status: res.status, code: err.code, requestId: e?.requestId, url: res.url });
+  return err;
 }
 
 export function refreshSession(): Promise<Session | null> {
@@ -78,13 +84,13 @@ export async function api<T = unknown>(method: string, path: string, o: Opts = {
 export const get = <T>(path: string, query?: Opts['query']) => api<T>('GET', path, { query });
 export const post = <T>(path: string, body?: unknown, query?: Opts['query']) => api<T>('POST', path, { body: body ?? {}, query });
 export const patch = <T>(path: string, body?: unknown) => api<T>('PATCH', path, { body: body ?? {} });
-export const del = <T>(path: string) => api<T>('DELETE', path);
-export const upload = <T>(path: string, form: FormData) => api<T>('POST', path, { form });
+export const del = <T>(path: string, query?: Opts['query']) => api<T>('DELETE', path, { query });
+export const upload = <T>(path: string, form: FormData, query?: Opts['query']) => api<T>('POST', path, { form, query });
 
 /** Fetch a protected file (e.g. a health record) as a Blob, sending the bearer token. */
-export async function download(path: string): Promise<Blob> {
-  let res = await send('GET', path, {}, accessToken);
-  if (res.status === 401) { const s = await refreshSession(); if (s) res = await send('GET', path, {}, s.accessToken); }
+export async function download(path: string, query?: Opts['query']): Promise<Blob> {
+  let res = await send('GET', path, { query }, accessToken);
+  if (res.status === 401) { const s = await refreshSession(); if (s) res = await send('GET', path, { query }, s.accessToken); }
   if (!res.ok) throw await toError(res);
   return res.blob();
 }
